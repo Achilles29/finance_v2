@@ -1594,7 +1594,11 @@ class Pos_mobile extends CI_Controller
         }
 
         if (is_array($this->mobileUser)) {
-            $outletId = max(0, (int)($this->mobileUser['outlet_id'] ?? 0));
+            $binding = $this->mobile_reader_binding_context();
+            if ($binding === null) {
+                return;
+            }
+            $outletId = $binding['outlet_id'];
         } else {
             $session = $this->Pos_model->find_active_cashier_session($this->current_actor_employee_id());
             $outletId = (int)($session['outlet_id'] ?? 0);

@@ -6616,7 +6616,7 @@ class Pos_model extends CI_Model
         [$page, $offset, $totalPages] = $this->paginate($total, $page, $limit);
         $customerDisplayExpr = $this->order_customer_display_expr('o', 'm');
         $select = '
-            o.id, o.order_no, o.service_type, o.status, o.stock_commit_status, o.ordered_at, o.confirmed_at,
+            o.id, o.outlet_id, o.order_no, o.service_type, o.status, o.stock_commit_status, o.ordered_at, o.confirmed_at,
             o.guest_count, ' . ($hasTableNo ? 'o.table_no' : 'NULL AS table_no') . ', o.grand_total, o.notes,
             po.outlet_name, pt.terminal_name, e.employee_name,
             m.member_no, m.member_name,

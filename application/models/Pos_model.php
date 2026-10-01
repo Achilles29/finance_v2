@@ -3925,8 +3925,9 @@ class Pos_model extends CI_Model
             $productQtyMap[$productId] = round((float)($productQtyMap[$productId] ?? 0) + (float)($line['qty'] ?? 0), 4);
         }
 
-        $triggerProductId = (int)($campaignRow['trigger_product_id'] ?? 0);
-        if ($triggerProductId > 0 && round((float)($productQtyMap[$triggerProductId] ?? 0), 4) <= 0) {
+        $triggerProductIds = $this->cashier_voucher_trigger_product_ids($campaignRow);
+        $triggerCategoryIds = $this->cashier_voucher_trigger_category_ids($campaignRow);
+        if (($triggerProductIds || $triggerCategoryIds) && !$this->cashier_voucher_trigger_matches($triggerProductIds, $triggerCategoryIds, $productQtyMap)) {
             return ['ok' => false, 'message' => 'Voucher ini mensyaratkan item tertentu ada di order.'];
         }
 
@@ -4374,8 +4375,9 @@ class Pos_model extends CI_Model
             if ($minSpend > 0 && $netAmount < $minSpend) {
                 continue;
             }
-            $triggerProductId = (int)($campaign['trigger_product_id'] ?? 0);
-            if ($triggerProductId > 0 && round((float)($productQtyMap[$triggerProductId] ?? 0), 4) <= 0) {
+            $triggerProductIds = $this->cashier_voucher_trigger_product_ids($campaign);
+            $triggerCategoryIds = $this->cashier_voucher_trigger_category_ids($campaign);
+            if (($triggerProductIds || $triggerCategoryIds) && !$this->cashier_voucher_trigger_matches($triggerProductIds, $triggerCategoryIds, $productQtyMap)) {
                 continue;
             }
 
@@ -4533,6 +4535,46 @@ class Pos_model extends CI_Model
         }
 
         return $map;
+    }
+
+    private function cashier_voucher_trigger_product_ids(array $campaign): array
+    {
+        $campaignId = (int)($campaign['campaign_id'] ?? $campaign['id'] ?? 0);
+        if ($campaignId > 0 && $this->db->table_exists('pos_voucher_campaign_trigger_product')) {
+            $ids = array_map('intval', array_column(
+                $this->db->select('product_id')->from('pos_voucher_campaign_trigger_product')->where('campaign_id', $campaignId)->get()->result_array(),
+                'product_id'
+            ));
+            if ($ids) return array_values(array_unique(array_filter($ids)));
+        }
+        $legacyId = (int)($campaign['trigger_product_id'] ?? 0);
+        return $legacyId > 0 ? [$legacyId] : [];
+    }
+
+    private function cashier_voucher_trigger_category_ids(array $campaign): array
+    {
+        $campaignId = (int)($campaign['campaign_id'] ?? $campaign['id'] ?? 0);
+        if ($campaignId <= 0 || !$this->db->table_exists('pos_voucher_campaign_trigger_category')) return [];
+        $rows = $this->db->select('category_id')->from('pos_voucher_campaign_trigger_category')->where('campaign_id', $campaignId)->get()->result_array();
+        return array_values(array_unique(array_filter(array_map('intval', array_column(
+            $rows,
+            'category_id'
+        )))));
+    }
+
+    private function cashier_voucher_trigger_matches(array $triggerProductIds, array $triggerCategoryIds, array $productQtyMap): bool
+    {
+        foreach ($triggerProductIds as $productId) {
+            if (round((float)($productQtyMap[(int)$productId] ?? 0), 4) > 0) return true;
+        }
+        if (!$triggerCategoryIds) return false;
+        $productIds = array_values(array_filter(array_map('intval', array_keys($productQtyMap)), static function ($id) { return $id > 0; }));
+        if (!$productIds) return false;
+        $categories = $this->db->select('product_category_id')->distinct()
+            ->from('mst_product')->where_in('id', $productIds)->where_in('product_category_id', $triggerCategoryIds)
+            ->get()->result_array();
+        if ($categories) return true;
+        return false;
     }
 
     private function current_member_point_balance(int $memberId): float

@@ -113,6 +113,8 @@ $primaryFilterKey = (string)($config['primary_filter_key'] ?? 'mode');
   .loyalty-ajax-selected.is-show {
     display: block;
   }
+  .loyalty-multi-product-list { display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.55rem; }
+  .loyalty-multi-product-chip { display:inline-flex; align-items:center; gap:.45rem; border:1px solid #ead7c8; border-radius:999px; background:#fffaf6; padding:.3rem .55rem; font-size:.85rem; }
   .loyalty-save-spinner {
     width: 1rem;
     height: 1rem;
@@ -246,7 +248,7 @@ $primaryFilterKey = (string)($config['primary_filter_key'] ?? 'mode');
               $type = (string)($field['type'] ?? 'text');
               $colClass = (string)($field['col'] ?? (($type === 'textarea') ? 'col-12' : 'col-md-4'));
               $name = (string)($field['name'] ?? '');
-              $searchUrl = (string)($field['search_url'] ?? ($type === 'ajax_product' ? ($config['product_search_url'] ?? '') : ($type === 'ajax_member' ? ($config['member_search_url'] ?? '') : '')));
+              $searchUrl = (string)($field['search_url'] ?? (in_array($type, ['ajax_product', 'ajax_product_multi'], true) ? ($config['product_search_url'] ?? '') : ($type === 'ajax_category_multi' ? ($config['category_search_url'] ?? '') : ($type === 'ajax_member' ? ($config['member_search_url'] ?? '') : ''))));
             ?>
             <div class="<?php echo html_escape($colClass); ?>">
               <?php if ($type === 'checkbox'): ?>
@@ -264,9 +266,9 @@ $primaryFilterKey = (string)($config['primary_filter_key'] ?? 'mode');
                   </select>
                 <?php elseif ($type === 'textarea'): ?>
                   <textarea class="form-control" rows="3" name="<?php echo html_escape($name); ?>" placeholder="<?php echo html_escape((string)($field['placeholder'] ?? '')); ?>"></textarea>
-                <?php elseif ($type === 'ajax_product' || $type === 'ajax_member'): ?>
+                <?php elseif (in_array($type, ['ajax_product', 'ajax_member', 'ajax_product_multi', 'ajax_category_multi'], true)): ?>
                   <div class="loyalty-ajax-box" data-ajax-field="<?php echo html_escape($name); ?>" data-search-url="<?php echo html_escape($searchUrl); ?>" data-display-key="<?php echo html_escape((string)($field['display_key'] ?? '')); ?>" data-kind="<?php echo html_escape($type); ?>">
-                    <input type="hidden" name="<?php echo html_escape($name); ?>" value="">
+                    <?php if (!in_array($type, ['ajax_product_multi', 'ajax_category_multi'], true)): ?><input type="hidden" name="<?php echo html_escape($name); ?>" value=""><?php endif; ?>
                     <input
                       class="form-control loyalty-ajax-input"
                       type="text"
@@ -275,7 +277,7 @@ $primaryFilterKey = (string)($config['primary_filter_key'] ?? 'mode');
                       autocomplete="off"
                     >
                     <div class="loyalty-ajax-result" data-result="<?php echo html_escape($name); ?>"></div>
-                    <div class="loyalty-ajax-selected" data-selected-preview="<?php echo html_escape($name); ?>"></div>
+                    <?php if (in_array($type, ['ajax_product_multi', 'ajax_category_multi'], true)): ?><div class="loyalty-multi-product-list" data-multi-selected="<?php echo html_escape($name); ?>"></div><?php else: ?><div class="loyalty-ajax-selected" data-selected-preview="<?php echo html_escape($name); ?>"></div><?php endif; ?>
                   </div>
                 <?php else: ?>
                   <input
@@ -550,9 +552,25 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
   function setAjaxField(box, row) {
+    const kind = String(box.dataset.kind || 'ajax_product');
+    if (kind === 'ajax_product_multi' || kind === 'ajax_category_multi') {
+      const list = box.querySelector('[data-multi-selected]');
+      const id = String(row.id || '');
+      if (!list || !id || list.querySelector(`[data-item-id="${CSS.escape(id)}"]`)) return;
+      const chip = document.createElement('span');
+      chip.className = 'loyalty-multi-product-chip';
+      chip.dataset.itemId = id;
+      const itemName = kind === 'ajax_category_multi' ? row.category_name : row.product_name;
+      chip.innerHTML = `<span>${escapeHtml(itemName || '')}</span><button type="button" class="btn-close" aria-label="Hapus pilihan"></button><input type="hidden" data-multi-value name="${escapeHtml(box.dataset.ajaxField)}[]" value="${escapeHtml(id)}">`;
+      chip.querySelector('button').addEventListener('click', () => chip.remove());
+      list.appendChild(chip);
+      const display = box.querySelector('.loyalty-ajax-input');
+      if (display) display.value = '';
+      closeAllAjaxResults();
+      return;
+    }
     const hidden = box.querySelector('input[type="hidden"]');
     const display = box.querySelector('.loyalty-ajax-input');
-    const kind = String(box.dataset.kind || 'ajax_product');
     if (hidden) hidden.value = String(row.id || '');
     if (display) {
       if (kind === 'ajax_member') {
@@ -566,6 +584,13 @@ document.addEventListener('DOMContentLoaded', function () {
     closeAllAjaxResults();
   }
   function clearAjaxField(box) {
+    if (['ajax_product_multi', 'ajax_category_multi'].includes(String(box.dataset.kind || ''))) {
+      const list = box.querySelector('[data-multi-selected]');
+      const display = box.querySelector('.loyalty-ajax-input');
+      if (list) list.innerHTML = '';
+      if (display) display.value = '';
+      return;
+    }
     const hidden = box.querySelector('input[type="hidden"]');
     const display = box.querySelector('.loyalty-ajax-input');
     if (hidden) hidden.value = '';
@@ -574,8 +599,22 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   function fillForm(row) {
     form.reset();
+    ajaxBoxes.forEach(clearAjaxField);
     fields.forEach((field) => {
       const input = form.querySelector(`[name="${field.name}"]`);
+      if (field.type === 'ajax_product_multi' || field.type === 'ajax_category_multi') {
+        const box = form.querySelector(`[data-ajax-field="${field.name}"]`);
+        if (!box) return;
+        const isCategory = field.type === 'ajax_category_multi';
+        const selected = isCategory
+          ? (Array.isArray(row.trigger_categories) ? row.trigger_categories : [])
+          : (Array.isArray(row.trigger_products) ? row.trigger_products : []);
+        selected.forEach((product) => setAjaxField(box, product));
+        if (!isCategory && !selected.length && Number(row.trigger_product_id || 0) > 0) {
+          setAjaxField(box, {id: row.trigger_product_id, product_name: row.trigger_product_name || `Produk #${row.trigger_product_id}`});
+        }
+        return;
+      }
       if (field.type === 'ajax_product' || field.type === 'ajax_member') {
         const box = form.querySelector(`[data-ajax-field="${field.name}"]`);
         if (!box) return;
@@ -603,6 +642,11 @@ document.addEventListener('DOMContentLoaded', function () {
   function collectPayload() {
     const payload = {};
     fields.forEach((field) => {
+      if (field.type === 'ajax_product_multi' || field.type === 'ajax_category_multi') {
+        const box = form.querySelector(`[data-ajax-field="${field.name}"]`);
+        payload[field.name] = box ? Array.from(box.querySelectorAll('[data-multi-value]')).map((input) => Number(input.value)).filter((id) => id > 0) : [];
+        return;
+      }
       const input = form.querySelector(`[name="${field.name}"]`);
       if (!input) return;
       payload[field.name] = field.type === 'checkbox' ? (input.checked ? 1 : 0) : input.value;
@@ -632,10 +676,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const kind = String(box.dataset.kind || 'ajax_product');
     let timer = null;
 
-    if (!input || !hidden || !resultEl || searchUrl === '') return;
+    const multi = kind === 'ajax_product_multi' || kind === 'ajax_category_multi';
+    if (!input || (!hidden && !multi) || !resultEl || searchUrl === '') return;
 
     input.addEventListener('input', () => {
-      hidden.value = '';
+      if (hidden) hidden.value = '';
       const q = input.value.trim();
       if (timer) window.clearTimeout(timer);
       if (q.length < 2) {
@@ -653,10 +698,13 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
           }
           resultEl.innerHTML = rows.map((row) => {
-            const title = kind === 'ajax_member' ? String(row.member_name || '') : String(row.product_name || '');
+            const category = kind === 'ajax_category_multi';
+            const title = kind === 'ajax_member' ? String(row.member_name || '') : (category ? String(row.category_name || '') : String(row.product_name || ''));
             const sub = kind === 'ajax_member'
               ? String(row.mobile_phone || '')
-              : [String(row.product_code || ''), String(row.product_division_name || ''), row.selling_price != null ? money(row.selling_price) : ''].filter(Boolean).join(' | ');
+              : category
+                ? [String(row.category_code || ''), String(row.product_division_name || '')].filter(Boolean).join(' | ')
+                : [String(row.product_code || ''), String(row.product_division_name || ''), row.selling_price != null ? money(row.selling_price) : ''].filter(Boolean).join(' | ');
             const thumb = row.photo_path ? `<img class="loyalty-ajax-thumb" src="${escapeHtml(row.photo_path)}" alt="${escapeHtml(title)}">` : '';
             return `
               <div class="loyalty-ajax-item" data-row="${encodeURIComponent(JSON.stringify(row))}">

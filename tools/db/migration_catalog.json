@@ -408,6 +408,24 @@
       "dependencies": ["2026-10-01b-roastery-label-element-library"],
       "classification": "seed",
       "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-10-01f-voucher-campaign-multiple-trigger-products",
+      "order": 2026100106,
+      "path": "sql/2026-10-01f_voucher_campaign_multiple_trigger_products.sql",
+      "sha256": "f9441dc8e93e2ce5eb339bf5d31477bc684759470c9d06b4ce8a79182ee4c253",
+      "dependencies": ["2026-09-04c-a5-schema-migration-registry-foundation"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-10-01g-voucher-campaign-trigger-categories",
+      "order": 2026100107,
+      "path": "sql/2026-10-01g_voucher_campaign_trigger_categories.sql",
+      "sha256": "d9bc3c3ba7ab0eacaf7970b928e414cc322181cbf0a8513196ef08e395cb4891",
+      "dependencies": ["2026-10-01f-voucher-campaign-multiple-trigger-products"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
     }
   ]
 }

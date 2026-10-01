@@ -577,6 +577,13 @@ class Loyalty extends MY_Controller
         $this->json_ok(['rows' => $rows]);
     }
 
+    public function product_category_search()
+    {
+        $this->require_permission('loyalty.voucher_campaign.index', 'view');
+        $q = trim((string)$this->input->get('q', true));
+        $this->json_ok(['rows' => $this->Loyalty_model->product_category_search($q)]);
+    }
+
     public function member_search()
     {
         $this->require_permission('loyalty.voucher_campaign.index', 'view');
@@ -796,7 +803,7 @@ class Loyalty extends MY_Controller
             'filters' => $this->promo_filters('issue_mode', ['ALL', 'PUBLIC', 'AUTO_FROM_TXN', 'MEMBER_TARGETED', 'MANUAL']),
             'promo_config' => [
                 'title' => 'Aturan Promo Voucher',
-                'subtitle' => 'Halaman ini khusus untuk mendefinisikan promo yang nanti bisa mengeluarkan voucher otomatis. Jadi ini aturan promonya, bukan daftar voucher aktualnya.',
+                'subtitle' => 'Pilih produk dan/atau kategori pemicu. Jika keduanya dipakai, cukup salah satu cocok dengan item di order POS.',
                 'entity_label' => 'Promo Voucher',
                 'new_label' => 'Buat Aturan Promo Voucher',
                 'data_url' => site_url('loyalty/voucher-campaigns/data'),
@@ -804,6 +811,7 @@ class Loyalty extends MY_Controller
                 'toggle_base_url' => site_url('loyalty/voucher-campaigns/toggle'),
                 'delete_base_url' => site_url('loyalty/voucher-campaigns/delete'),
                 'product_search_url' => site_url('loyalty/product-search'),
+                'category_search_url' => site_url('loyalty/product-category-search'),
                 'primary_filter_key' => 'issue_mode',
                 'primary_filter_options' => [
                     ['value' => 'ALL', 'label' => 'Semua Cara Voucher Keluar'],
@@ -838,7 +846,8 @@ class Loyalty extends MY_Controller
                     ['name' => 'discount_value', 'label' => 'Nilai benefit', 'type' => 'number', 'step' => '0.01'],
                     ['name' => 'max_discount_amount', 'label' => 'Batas potongan maksimal', 'type' => 'number', 'step' => '0.01'],
                     ['name' => 'min_spend_amount', 'label' => 'Minimal belanja', 'type' => 'number', 'step' => '0.01'],
-                    ['name' => 'trigger_product_id', 'label' => 'Produk pemicu', 'type' => 'ajax_product', 'placeholder' => 'Cari nama produk bila promo dipicu oleh produk tertentu', 'display_key' => 'trigger_product_name'],
+                    ['name' => 'trigger_product_ids', 'label' => 'Produk pemicu (opsional, pilih satu atau lebih)', 'type' => 'ajax_product_multi', 'placeholder' => 'Pilih produk tertentu yang dapat memicu promo'],
+                    ['name' => 'trigger_category_ids', 'label' => 'Kategori pemicu (opsional, pilih satu atau lebih)', 'type' => 'ajax_category_multi', 'placeholder' => 'Produk dalam kategori ini juga dapat memicu promo'],
                     ['name' => 'free_product_id', 'label' => 'Produk gratis', 'type' => 'ajax_product', 'placeholder' => 'Cari nama produk gratis bila benefit berupa item gratis', 'display_key' => 'free_product_name'],
                     ['name' => 'free_qty', 'label' => 'Jumlah produk gratis', 'type' => 'number', 'step' => '0.0001'],
                     ['name' => 'valid_day_count', 'label' => 'Masa berlaku voucher (hari)', 'type' => 'number', 'step' => '1'],

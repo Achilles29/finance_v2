@@ -662,6 +662,7 @@ $route['loyalty/voucher-usages'] = 'loyalty/voucher_usages';
 $route['loyalty/voucher-usages/data'] = 'loyalty/voucher_usages_data';
 $route['loyalty/voucher-usages/detail/(:num)'] = 'loyalty/voucher_usage_detail/$1';
 $route['loyalty/product-search'] = 'loyalty/product_search';
+$route['loyalty/product-category-search'] = 'loyalty/product_category_search';
 $route['loyalty/member-search'] = 'loyalty/member_search';
 $route['loyalty/redeem'] = 'loyalty/redeem_index';
 $route['loyalty/redeem/data'] = 'loyalty/redeem_data';

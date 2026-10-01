@@ -58,6 +58,17 @@ class Loyalty_model extends CI_Model
             ->result_array();
     }
 
+    public function product_category_search(string $q, int $limit = 20): array
+    {
+        if (!$this->db->table_exists('mst_product_category')) return [];
+        $db = $this->db->select('c.id, c.name AS category_name, c.code AS category_code, d.name AS product_division_name')
+            ->from('mst_product_category c')
+            ->join('mst_product_division d', 'd.id = c.product_division_id', 'left')
+            ->where('c.is_active', 1);
+        if ($q !== '') $db->group_start()->like('c.name', $q)->or_like('c.code', $q)->group_end();
+        return $db->order_by('d.sort_order', 'ASC')->order_by('c.name', 'ASC')->limit(max(1, min(50, $limit)))->get()->result_array();
+    }
+
     public function member_search(string $q, int $limit = 20): array
     {
         if (!$this->db->table_exists('crm_member')) {
@@ -547,7 +558,7 @@ class Loyalty_model extends CI_Model
         if (in_array($issueMode, ['PUBLIC', 'AUTO_FROM_TXN', 'MEMBER_TARGETED', 'MANUAL'], true)) {
             $db->where('c.issue_mode', $issueMode);
         }
-        return $this->paginate_rows($db, [
+        $result = $this->paginate_rows($db, [
             'c.*',
             'p1.product_name AS trigger_product_name',
             'p2.product_name AS free_product_name',
@@ -565,6 +576,41 @@ class Loyalty_model extends CI_Model
                 ELSE c.voucher_type
              END AS voucher_type_label",
         ], ['c.campaign_name' => 'ASC'], max(1, (int)($filters['page'] ?? 1)), max(1, min(200, (int)($filters['limit'] ?? 25))));
+        if (!empty($result['rows']) && $this->db->table_exists('pos_voucher_campaign_trigger_product')) {
+            $campaignIds = array_values(array_filter(array_map(static function ($row) { return (int)$row['id']; }, $result['rows'])));
+            if ($campaignIds) {
+                $products = $this->db->select('r.campaign_id, p.id, p.product_name, p.product_code, pd.name AS product_division_name')
+                    ->from('pos_voucher_campaign_trigger_product r')
+                    ->join('mst_product p', 'p.id = r.product_id', 'inner')
+                    ->join('mst_product_division pd', 'pd.id = p.product_division_id', 'left')
+                    ->where_in('r.campaign_id', $campaignIds)
+                    ->order_by('p.product_name', 'ASC')
+                    ->get()->result_array();
+                $byCampaign = [];
+                foreach ($products as $product) $byCampaign[(int)$product['campaign_id']][] = $product;
+                foreach ($result['rows'] as &$row) {
+                    $row['trigger_products'] = $byCampaign[(int)$row['id']] ?? [];
+                    if (!$row['trigger_products'] && (int)($row['trigger_product_id'] ?? 0) > 0) {
+                        $row['trigger_products'][] = ['id' => (int)$row['trigger_product_id'], 'product_name' => (string)($row['trigger_product_name'] ?? '')];
+                    }
+                }
+                unset($row);
+                if ($this->db->table_exists('pos_voucher_campaign_trigger_category')) {
+                    $categories = $this->db->select('r.campaign_id, c.id, c.name AS category_name, c.code AS category_code, d.name AS product_division_name')
+                        ->from('pos_voucher_campaign_trigger_category r')
+                        ->join('mst_product_category c', 'c.id = r.category_id', 'inner')
+                        ->join('mst_product_division d', 'd.id = c.product_division_id', 'left')
+                        ->where_in('r.campaign_id', $campaignIds)
+                        ->order_by('c.name', 'ASC')
+                        ->get()->result_array();
+                    $categoriesByCampaign = [];
+                    foreach ($categories as $category) $categoriesByCampaign[(int)$category['campaign_id']][] = $category;
+                    foreach ($result['rows'] as &$row) $row['trigger_categories'] = $categoriesByCampaign[(int)$row['id']] ?? [];
+                    unset($row);
+                }
+            }
+        }
+        return $result;
     }
 
     public function voucher_issue_rows(array $filters): array
@@ -828,6 +874,32 @@ class Loyalty_model extends CI_Model
             $voucherType = 'AMOUNT';
         }
 
+        $triggerProductIds = $data['trigger_product_ids'] ?? null;
+        if (!is_array($triggerProductIds)) {
+            $legacyTrigger = $this->nullable_int($data['trigger_product_id'] ?? null);
+            $triggerProductIds = $legacyTrigger ? [$legacyTrigger] : [];
+        }
+        $triggerProductIds = array_values(array_unique(array_filter(array_map('intval', $triggerProductIds), static function ($productId) { return $productId > 0; })));
+        $triggerCategoryIds = $data['trigger_category_ids'] ?? [];
+        if (!is_array($triggerCategoryIds)) $triggerCategoryIds = [];
+        $triggerCategoryIds = array_values(array_unique(array_filter(array_map('intval', $triggerCategoryIds), static function ($categoryId) { return $categoryId > 0; })));
+        if ($triggerProductIds) {
+            $validCount = (int)$this->db->from('mst_product')->where_in('id', $triggerProductIds)->count_all_results();
+            if ($validCount !== count($triggerProductIds)) {
+                return ['ok' => false, 'message' => 'Salah satu produk pemicu tidak ditemukan. Pilih ulang produk tersebut.'];
+            }
+        }
+        if ($triggerCategoryIds) {
+            $validCount = (int)$this->db->from('mst_product_category')->where_in('id', $triggerCategoryIds)->count_all_results();
+            if ($validCount !== count($triggerCategoryIds)) return ['ok' => false, 'message' => 'Salah satu kategori pemicu tidak ditemukan. Pilih ulang kategori tersebut.'];
+        }
+        if (!$this->db->table_exists('pos_voucher_campaign_trigger_product')) {
+            return ['ok' => false, 'message' => 'Struktur multi-produk pemicu belum tersedia. Jalankan migrasi aplikasi terlebih dahulu.'];
+        }
+        if (!$this->db->table_exists('pos_voucher_campaign_trigger_category')) {
+            return ['ok' => false, 'message' => 'Struktur kategori pemicu belum tersedia. Jalankan migrasi aplikasi terlebih dahulu.'];
+        }
+
         $campaignCode = strtoupper(trim((string)($data['campaign_code'] ?? '')));
         $this->db->trans_begin();
         try {
@@ -845,7 +917,7 @@ class Loyalty_model extends CI_Model
                 'discount_value' => max(0, (float)($data['discount_value'] ?? 0)),
                 'max_discount_amount' => max(0, (float)($data['max_discount_amount'] ?? 0)),
                 'min_spend_amount' => max(0, (float)($data['min_spend_amount'] ?? 0)),
-                'trigger_product_id' => $this->nullable_int($data['trigger_product_id'] ?? null),
+                'trigger_product_id' => $triggerProductIds[0] ?? null,
                 'free_product_id' => $this->nullable_int($data['free_product_id'] ?? null),
                 'free_qty' => max(0, (float)($data['free_qty'] ?? 0)),
                 'valid_day_count' => max(0, (int)($data['valid_day_count'] ?? 0)),
@@ -864,6 +936,15 @@ class Loyalty_model extends CI_Model
             } else {
                 $this->db->insert('pos_voucher_campaign', $payload);
                 $id = (int)$this->db->insert_id();
+            }
+
+            $this->db->where('campaign_id', $id)->delete('pos_voucher_campaign_trigger_product');
+            foreach ($triggerProductIds as $productId) {
+                $this->db->insert('pos_voucher_campaign_trigger_product', ['campaign_id' => $id, 'product_id' => $productId]);
+            }
+            $this->db->where('campaign_id', $id)->delete('pos_voucher_campaign_trigger_category');
+            foreach ($triggerCategoryIds as $categoryId) {
+                $this->db->insert('pos_voucher_campaign_trigger_category', ['campaign_id' => $id, 'category_id' => $categoryId]);
             }
 
             if ($this->db->trans_status() === false) {

@@ -58,9 +58,50 @@ $check(
     'an explicit template ID takes precedence over the default template key'
 );
 $check(
+    strpos($source['controller'], '$selectedTemplateKey = (string)$selectedTemplate[\'template_key\']') !== false
+        && strpos($source['controller'], '$returnId > 0 ? \'edit\' : \'create\'') !== false
+        && strpos($source['controller'], '$returnUrl .= \'&template_id=\' . $templateId') !== false,
+    'selected custom templates remain selected after redirect, template permissions match the editing context, and failed label saves retain the chosen template'
+);
+$check(
+    strpos($source['controller'], "array_key_exists('new', \$_GET)") !== false
+        && strpos($source['controller'], "redirect('roastery/packaging-labels?edit=' . \$savedId)") !== false,
+    'empty ?new= query opens the create form and a successful save reopens the saved label for verification'
+);
+$check(
+    strpos($source['controller'], '$labelName = $coffeeName;') !== false
+        && strpos($source['controller'], 'if ($coffeeName === \'\')') !== false
+        && strpos($source['view'], 'name="label_name" value=') !== false
+        && strpos($source['view'], 'name="coffee_name" data-label-field="coffee_name"') !== false,
+    'label name defaults to the selected product so browser required-field validation cannot silently block save'
+);
+$check(
+    strpos($source['controller'], 'list_templates($manageTemplates)') !== false
+        && strpos($source['view'], 'Pengelolaan Template') !== false
+        && strpos($source['view'], 'roastery/packaging-labels/templates/delete/') !== false
+        && strpos($source['model'], "->where('is_active', 1)") !== false
+        && strpos($source['model'], "->where('is_system', 0)") !== false,
+    'template management lists system/custom templates and only archives active custom templates'
+);
+$check(
+    strpos($source['controller'], "'artwork_path' => 'uploads/coffee-labels/'") !== false
+        && strpos($source['controller'], "'logo_path' => 'uploads/coffee-labels/logos/'") !== false
+        && strpos($source['view'], 'design.assets={artwork_path:galleryPath?.value||galleryPath?.dataset.currentPath') !== false
+        && strpos($source['view'], 'applyTemplateAssets(templateDesign.assets)') !== false,
+    'templates preserve safe artwork/logo selections and restore those assets into the live preview when applied'
+);
+$check(
+    strpos($source['model'], '$updated = $this->db->where(\'id\', $id)->update(self::TABLE, $data)') !== false
+        && strpos($source['model'], 'Packaging label insert failed; database error code') !== false
+        && strpos($source['model'], 'Packaging label update failed; database error code') !== false,
+    'label inserts and updates report database failures to the application log instead of returning a false success ID'
+);
+$check(
     strpos($source['controller'], '($applyTemplate || $newMode)') !== false
         && strpos($source['view'], 'isBlankNew') !== false
-        && strpos($source['view'], 'const isBlankNew=<?php echo $isBlankNew ? \'true\' : \'false\'; ?>;') !== false
+        && strpos($source['view'], 'let isBlankNew=<?php echo $isBlankNew ? \'true\' : \'false\'; ?>;') !== false
+        && strpos($source['view'], "isDefaultBlankTemplate=option.value==='classic-portrait'") !== false
+        && strpos($source['view'], 'if(isDefaultBlankTemplate){state.elements=[]}') !== false
         && strpos($source['view'], 'blankCanvas') !== false
         && strpos($source['view'], 'value="<?php echo $selectedTemplateId; ?>"') !== false
         && strpos($source['view'], 'Mulai kosong') === false
@@ -155,7 +196,11 @@ $check(
     strpos($source['view'], 'data-element-toggle="logo"') !== false
         && strpos($source['view'], 'function syncElementToggles()') !== false
         && strpos($source['view'], 'function beginDrag(') !== false
-        && strpos($source['view'], 'function buildPrintSheet()') !== false,
+        && strpos($source['view'], 'function buildPrintSheet()') !== false
+        && strpos($source['view'], 'const count=state.print.perSheet;') !== false
+        && strpos($source['view'], 'const pageCount=Math.ceil(count/Math.max(1,cap.total));') !== false
+        && strpos($source['view'], 'pages[Math.floor(i/Math.max(1,cap.total))].appendChild(slot)') !== false
+        && strpos($source['view'], 'print-sheet-page.is-last') !== false,
     'editor exposes direct element visibility, drag handling, and shared print-sheet rendering'
 );
 $check(

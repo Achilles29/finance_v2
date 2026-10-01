@@ -12,23 +12,29 @@ $selectedTemplate = is_array($selected_template ?? null) ? $selected_template : 
 $selectedTemplateId = (int)($selectedTemplate['id'] ?? 0);
 $selectedTemplateKey = (string)($selectedTemplate['template_key'] ?? 'classic-portrait');
 $applyTemplate = !empty($apply_template);
-$isBlankNew = $formMode && !$isEditing && $selectedTemplateKey === 'classic-portrait';
+$manageTemplates = !empty($manage_templates);
 $isUniversalTemplate = false; // Ke depan semua template memakai editor + mesin cetak yang sama.
 $canSave = $isEditing ? !empty($can_edit) : !empty($can_create);
 $imagePath = trim((string)($edit['image_path'] ?? ''));
-$imageUrl = $imagePath !== '' ? base_url($imagePath) : '';
 $logoPath = trim((string)($edit['logo_path'] ?? ''));
-$profileLogoUrl = trim((string)($business_profile['logo_url'] ?? ''));
-$defaultLogoUrl = is_file(FCPATH . 'assets/uploads/logo.png') ? base_url('assets/uploads/logo.png')
-    : ($profileLogoUrl !== '' ? $profileLogoUrl : base_url('assets/img/business-placeholder.svg'));
-$logoUrl = $logoPath !== '' ? base_url($logoPath) : $defaultLogoUrl;
 $storedDesignJson = (string)($edit['design_json'] ?? '{}');
 $designJson = (string)($editor_design_json ?? ($storedDesignJson !== '' ? $storedDesignJson : ($selectedTemplate['design_json'] ?? '{}')));
 $designData = json_decode($storedDesignJson, true);
 $designData = is_array($designData) ? $designData : [];
 $editorDesignData = json_decode($designJson, true);
 $editorDesignData = is_array($editorDesignData) ? $editorDesignData : [];
+$templateAssets = is_array($editorDesignData['assets'] ?? null) ? $editorDesignData['assets'] : [];
+if (!$isEditing && $formMode) {
+    $imagePath = trim((string)($templateAssets['artwork_path'] ?? ''));
+    $logoPath = trim((string)($templateAssets['logo_path'] ?? ''));
+}
+$imageUrl = $imagePath !== '' ? base_url($imagePath) : '';
+$profileLogoUrl = trim((string)($business_profile['logo_url'] ?? ''));
+$defaultLogoUrl = is_file(FCPATH . 'assets/uploads/logo.png') ? base_url('assets/uploads/logo.png')
+    : ($profileLogoUrl !== '' ? $profileLogoUrl : base_url('assets/img/business-placeholder.svg'));
+$logoUrl = $logoPath !== '' ? base_url($logoPath) : $defaultLogoUrl;
 $editorCanvas = is_array($editorDesignData['canvas'] ?? null) ? $editorDesignData['canvas'] : [];
+$isBlankNew = $formMode && !$isEditing && ($selectedTemplateKey === 'classic-portrait' || !empty($editorCanvas['blankCanvas']));
 $isBlankCanvas = $isBlankNew || !empty($editorCanvas['blankCanvas']);
 $stylePreset = preg_match('/^[a-z0-9-]+$/', (string)($editorCanvas['stylePreset'] ?? ''))
     ? (string)$editorCanvas['stylePreset'] : '';
@@ -51,7 +57,7 @@ $selectedFooterNote = (string)($edit['footer_note'] ?? ($designMeta['footer_note
 $selectedRibbonText = $isBlankNew ? '' : (string)($designMeta['ribbon_text'] ?? ($selectedFooterNote !== '' ? $selectedFooterNote : 'Single Origin'));
 $selectedLabelName = trim((string)($edit['label_name'] ?? ($edit['coffee_name'] ?? '')));
 $selectedProductId = (int)($edit['product_id'] ?? 0);
-$badgeLogoPath = trim((string)($designMeta['badge_logo_path'] ?? ''));
+$badgeLogoPath = trim((string)($designMeta['badge_logo_path'] ?? ($templateAssets['badge_logo_path'] ?? '')));
 $badgeLogoUrl = $badgeLogoPath !== '' ? base_url($badgeLogoPath) : $logoUrl;
 $themePreset = (string)($editorCanvas['theme'] ?? ($edit['theme_preset'] ?? 'heritage-cream'));
 $designCanvas = $editorCanvas;
@@ -351,6 +357,7 @@ linear-gradient(135deg,rgba(255,255,255,.08),transparent 36%,rgba(86,29,33,.12) 
 @page{size:A4 portrait;margin:0}
 @media print{body.coffee-label-printing{margin:0!important;background:#fff!important;print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}body.coffee-label-printing *{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}body.coffee-label-printing .layout-wrapper,body.coffee-label-printing .layout-menu,body.coffee-label-printing .layout-navbar,body.coffee-label-printing .content-footer{display:none!important}body.coffee-label-printing #printSheetPortal{display:grid!important;position:absolute!important;left:0!important;top:0!important;width:var(--print-paper-w,210mm)!important;height:var(--print-paper-h,297mm)!important;margin:0!important;padding:var(--print-margin,8mm)!important;gap:var(--print-gap,4mm)!important;grid-template-columns:repeat(var(--print-cols,2),var(--label-print-w,90mm));grid-auto-rows:var(--label-print-h,140mm);align-content:start;justify-content:center;box-sizing:border-box;background:#fff!important;page-break-after:auto!important;break-after:auto!important}body.coffee-label-printing #printSheetPortal .print-label-slot{position:relative;width:var(--label-print-w,90mm);height:var(--label-print-h,140mm);break-inside:avoid}body.coffee-label-printing #printSheetPortal .print-label-slot.cut-line:before{content:"";position:absolute;inset:-1.5mm;border:.25mm dashed #222;z-index:60;pointer-events:none}body.coffee-label-printing #printSheetPortal .label-canvas{display:block!important;width:var(--label-design-w,360px)!important;height:var(--label-design-h,560px)!important;max-width:none!important;box-shadow:none!important;outline:0!important;transform:scale(var(--label-print-scale,.944882))!important;transform-origin:top left!important}body.coffee-label-printing #printSheetPortal .label-logo{filter:none!important;image-rendering:auto!important}body.coffee-label-printing #printSheetPortal .label-bg img{image-rendering:auto!important}body.namua-label-printing{margin:0!important;background:#fff!important}body.namua-label-printing > *{display:none!important}body.namua-label-printing #universalPrintPortal{display:grid!important;width:210mm!important;min-height:297mm!important;grid-template-columns:repeat(2,100mm)!important;align-content:start!important;gap:2.5mm 0!important;padding:5mm!important;background:#fff!important;box-sizing:border-box!important;print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}body.namua-label-printing #universalPrintPortal .universal-print-slot{position:relative;width:100mm!important;break-inside:avoid!important;page-break-inside:avoid!important}body.namua-label-printing #universalPrintPortal .universal-print-slot:before{content:"";position:absolute;inset:-.5mm;border:.2mm dashed rgba(32,22,22,.55);pointer-events:none}body.namua-label-printing #universalPrintPortal .namua-label{width:100mm!important;min-height:68mm!important;max-width:none!important;box-shadow:none!important;print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}}
 @media print{body.coffee-label-printing #printSheetPortal .is-dynamic-placeholder{display:none!important}}
+@media print{body.coffee-label-printing #printSheetPortal{display:block!important;position:static!important;left:auto!important;top:auto!important;width:var(--print-paper-w,210mm)!important;height:auto!important;margin:0!important;padding:0!important;overflow:visible!important;background:#fff!important}body.coffee-label-printing #printSheetPortal .print-sheet-page{display:grid!important;width:var(--print-paper-w,210mm)!important;height:var(--print-paper-h,297mm)!important;padding:var(--print-margin,8mm)!important;gap:var(--print-gap,4mm)!important;grid-template-columns:repeat(var(--print-cols,2),var(--label-print-w,90mm))!important;grid-template-rows:repeat(var(--print-rows,2),var(--label-print-h,140mm))!important;grid-auto-flow:row!important;align-content:start!important;justify-content:center!important;box-sizing:border-box!important;break-after:page!important;page-break-after:always!important}body.coffee-label-printing #printSheetPortal .print-sheet-page.is-last{break-after:auto!important;page-break-after:auto!important}body.coffee-label-printing #printSheetPortal .print-label-slot{break-inside:avoid!important;page-break-inside:avoid!important}}
 </style>
 
 <div class="coffee-label-page <?php echo $isUniversalTemplate ? 'is-universal-editor' : ''; ?> <?php echo $isBlankCanvas ? 'is-blank-label' : ''; ?>">
@@ -413,8 +420,8 @@ linear-gradient(135deg,rgba(255,255,255,.08),transparent 36%,rgba(86,29,33,.12) 
             <div class="label-section-title"><i class="ri ri-restaurant-line"></i><span>Identitas Label & Produk</span></div>
             <div class="full">
               <label class="form-label">Nama Label</label>
-              <input class="form-control" name="label_name" value="<?php echo html_escape($selectedLabelName); ?>" placeholder="Contoh: Prau Red Wine - Kemasan 200 g" required>
-              <small class="text-muted">Penanda administrasi untuk membedakan variasi desain, ukuran, atau batch dari produk yang sama. Tidak dicetak pada kemasan.</small>
+              <input class="form-control" name="label_name" value="<?php echo html_escape($selectedLabelName); ?>" placeholder="Opsional, otomatis mengikuti nama produk">
+              <small class="text-muted">Opsional. Jika dikosongkan, nama label mengikuti nama produk.</small>
             </div>
             <div class="full">
               <label class="form-label">Nama Produk</label>
@@ -427,7 +434,7 @@ linear-gradient(135deg,rgba(255,255,255,.08),transparent 36%,rgba(86,29,33,.12) 
                     </option>
                   <?php endforeach; ?>
                 </select>
-                <input class="form-control" name="coffee_name" data-label-field="coffee_name" value="<?php echo html_escape((string)($edit['coffee_name'] ?? '')); ?>" placeholder="Nama produk yang tercetak" required>
+                <input class="form-control" name="coffee_name" data-label-field="coffee_name" value="<?php echo html_escape((string)($edit['coffee_name'] ?? '')); ?>" placeholder="Nama produk yang tercetak">
               </div>
               <small class="text-muted">Pilih master produk agar terhubung. Jika belum ada di master, nama produk tetap dapat diisi manual.</small>
             </div>
@@ -518,7 +525,7 @@ linear-gradient(135deg,rgba(255,255,255,.08),transparent 36%,rgba(86,29,33,.12) 
             <div><label class="form-label">Artwork PNG</label><input class="form-control" type="file" name="label_image" id="labelImageInput" accept="image/png"><small class="text-muted">Upload PNG baru akan mengganti artwork lama.</small></div>
             <div class="full">
               <label class="form-label">Galeri Artwork Tersimpan</label>
-              <input type="hidden" name="gallery_image_path" id="galleryImagePath" value="">
+              <input type="hidden" name="gallery_image_path" id="galleryImagePath" data-current-path="<?php echo html_escape($imagePath); ?>" value="<?php echo html_escape(!$isEditing ? (string)($templateAssets['artwork_path'] ?? '') : ''); ?>">
               <?php if (empty($artworkGallery)): ?>
                 <div class="alert alert-light border mb-0">Belum ada PNG di galeri. Upload artwork pertama dulu, nanti otomatis muncul di sini.</div>
               <?php else: ?>
@@ -537,7 +544,7 @@ linear-gradient(135deg,rgba(255,255,255,.08),transparent 36%,rgba(86,29,33,.12) 
             <div><label class="form-label">Logo Utama</label><input class="form-control" type="file" name="logo_image" id="logoImageInput" accept="image/png,image/svg+xml,.svg"><small class="text-muted">Logo utama besar di tengah label. SVG resmi disarankan untuk cetak tajam.</small></div>
             <div>
               <label class="form-label">Galeri Logo Utama</label>
-              <input type="hidden" name="gallery_logo_path" id="galleryLogoPath" value="">
+              <input type="hidden" name="gallery_logo_path" id="galleryLogoPath" data-current-path="<?php echo html_escape($logoPath); ?>" value="<?php echo html_escape(!$isEditing ? (string)($templateAssets['logo_path'] ?? '') : ''); ?>">
               <?php if (empty($logoGallery)): ?>
                 <div class="alert alert-light border mb-0 py-2">Belum ada logo tersimpan.</div>
               <?php else: ?>
@@ -555,7 +562,7 @@ linear-gradient(135deg,rgba(255,255,255,.08),transparent 36%,rgba(86,29,33,.12) 
             <div><label class="form-label">Logo Badge Kanan Atas</label><input class="form-control" type="file" name="badge_logo_image" id="badgeLogoInput" accept="image/png,image/svg+xml,.svg"><small class="text-muted">Badge/logo kecil di kanan atas. Jika kosong, ikut logo utama.</small></div>
             <div>
               <label class="form-label">Galeri Logo Badge</label>
-              <input type="hidden" name="gallery_badge_logo_path" id="galleryBadgeLogoPath" value="">
+              <input type="hidden" name="gallery_badge_logo_path" id="galleryBadgeLogoPath" data-current-path="<?php echo html_escape($badgeLogoPath); ?>" value="<?php echo html_escape(!$isEditing ? (string)($templateAssets['badge_logo_path'] ?? '') : ''); ?>">
               <?php if (empty($logoGallery)): ?>
                 <div class="alert alert-light border mb-0 py-2">Belum ada logo tersimpan.</div>
               <?php else: ?>
@@ -671,6 +678,7 @@ linear-gradient(135deg,rgba(255,255,255,.08),transparent 36%,rgba(86,29,33,.12) 
         <form method="post" action="<?php echo site_url('roastery/packaging-labels/templates/save'); ?>" id="saveTemplateForm" class="d-none">
           <?php if ($this->config->item('csrf_protection')): ?><input type="hidden" name="<?php echo html_escape($this->security->get_csrf_token_name()); ?>" value="<?php echo html_escape($this->security->get_csrf_hash()); ?>"><?php endif; ?>
           <input type="hidden" name="return_label_id" value="<?php echo (int)($edit['id'] ?? 0); ?>">
+          <input type="hidden" name="return_template_id" value="<?php echo $selectedTemplateId; ?>">
           <input type="hidden" name="template_name" id="templateNameInput">
           <input type="hidden" name="template_description" id="templateDescriptionInput">
           <input type="hidden" name="template_design_json" id="templateDesignJsonInput">
@@ -764,9 +772,38 @@ linear-gradient(135deg,rgba(255,255,255,.08),transparent 36%,rgba(86,29,33,.12) 
         <?php if (!empty($can_create)): ?>
           <a class="btn btn-danger" href="<?php echo site_url('roastery/packaging-labels?new=1'); ?>"><i class="ri ri-add-line me-1"></i>Buat Label</a>
         <?php endif; ?>
+        <a class="btn btn-outline-dark" href="<?php echo site_url('roastery/packaging-labels?manage_templates=1'); ?>"><i class="ri ri-layout-grid-line me-1"></i>Kelola Template</a>
       </div>
     </div>
     <div class="label-panel-body">
+      <?php if ($manageTemplates): ?>
+        <section class="border rounded-4 p-3 mb-4 bg-light">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div><h6 class="mb-1 fw-bold">Pengelolaan Template</h6><small class="text-muted">Template sistem dikunci. Template kustom dihapus dengan mengarsipkannya, sehingga label lama tetap aman.</small></div>
+            <a class="btn btn-sm btn-outline-secondary" href="<?php echo site_url('roastery/packaging-labels'); ?>">Tutup</a>
+          </div>
+          <div class="row g-2">
+            <?php foreach ($labelTemplates as $templateRow): ?>
+              <?php
+                $templateRowId = (int)($templateRow['id'] ?? 0);
+                $templateIsSystem = !empty($templateRow['is_system']);
+                $templateIsActive = (int)($templateRow['is_active'] ?? 1) === 1;
+              ?>
+              <div class="col-12 col-md-6 col-xl-4"><div class="d-flex justify-content-between align-items-center gap-2 border rounded-3 bg-white p-3 h-100">
+                <div class="min-w-0"><div class="fw-bold text-truncate"><?php echo html_escape((string)($templateRow['template_name'] ?? 'Template')); ?></div><small class="text-muted"><?php echo $templateIsSystem ? 'Sistem' : 'Kustom'; ?> · <?php echo $templateIsActive ? 'Aktif' : 'Diarsipkan'; ?></small></div>
+                <?php if (!$templateIsSystem && $templateIsActive && !empty($can_delete)): ?>
+                  <form method="post" action="<?php echo site_url('roastery/packaging-labels/templates/delete/'.$templateRowId); ?>" onsubmit="return confirm('Arsipkan template ini? Template tidak akan muncul saat membuat label baru.');">
+                    <?php if ($this->config->item('csrf_protection')): ?><input type="hidden" name="<?php echo html_escape($this->security->get_csrf_token_name()); ?>" value="<?php echo html_escape($this->security->get_csrf_hash()); ?>"><?php endif; ?>
+                    <button class="btn btn-sm btn-outline-danger text-nowrap" type="submit"><i class="ri ri-delete-bin-line me-1"></i>Hapus</button>
+                  </form>
+                <?php elseif (!$templateIsSystem && $templateIsActive): ?>
+                  <span class="small text-muted">Perlu hak hapus</span>
+                <?php endif; ?>
+              </div></div>
+            <?php endforeach; ?>
+          </div>
+        </section>
+      <?php endif; ?>
       <?php
         $visibleLabelCount = count($labels);
         $artworkLabelCount = 0;
@@ -841,7 +878,8 @@ linear-gradient(135deg,rgba(255,255,255,.08),transparent 36%,rgba(86,29,33,.12) 
 <script>
 (function(){
 const initialRaw=<?php echo json_encode($designJson, JSON_INVALID_UTF8_SUBSTITUTE); ?>;
-const isBlankNew=<?php echo $isBlankNew ? 'true' : 'false'; ?>;
+let isBlankNew=<?php echo $isBlankNew ? 'true' : 'false'; ?>;
+let isDefaultBlankTemplate=<?php echo ($formMode && !$isEditing && $selectedTemplateKey === 'classic-portrait') ? 'true' : 'false'; ?>;
 let isBlankCanvas=<?php echo $isBlankCanvas ? 'true' : 'false'; ?>;
 const elementLibrary=<?php echo json_encode($elementLibrary, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 const el=id=>document.getElementById(id), fields=[...document.querySelectorAll('[data-label-field]')], metaFields=[...document.querySelectorAll('[data-meta-field]')], by=n=>document.querySelector('[data-label-field="'+n+'"]'), metaBy=n=>document.querySelector('[data-meta-field="'+n+'"]');
@@ -904,7 +942,7 @@ function merge(a,b){const r=clone(a);if(b.canvas)Object.assign(r.canvas,b.canvas
 const initialDesign=parsed();
 let state=merge(defaults,initialDesign), active=blockSelect.value;
 state.elements=Array.isArray(state.elements)?state.elements:[];
-if(isBlankCanvas){if(isBlankNew){state.elements=[]}Object.keys(state.blocks).forEach(key=>{if(isBlankNew||!Object.prototype.hasOwnProperty.call((initialDesign.blocks||{})[key]||{},'visible'))state.blocks[key].visible=false});state.canvas.blankCanvas=true;state.canvas.stylePreset=''}
+if(isBlankCanvas){if(isDefaultBlankTemplate){state.elements=[]}Object.keys(state.blocks).forEach(key=>{if(isDefaultBlankTemplate||!Object.prototype.hasOwnProperty.call((initialDesign.blocks||{})[key]||{},'visible'))state.blocks[key].visible=false});state.canvas.blankCanvas=true;state.canvas.stylePreset=''}
 let selectedFreeId=state.elements[0]?.id||'',freeDragState=null;
 ['logo','badge_logo'].forEach(k=>{
   state.blocks[k]=state.blocks[k]||clone(defaults.blocks[k]);
@@ -1633,9 +1671,8 @@ function updatePrintPreviewState(){
   syncPrintStateFromControls();
   const w=Math.max(40,Math.min(160,parseInt(canvasWidthEl.value||90,10))),h=Math.max(60,Math.min(240,parseInt(canvasHeightEl.value||140,10)));
   const cap=printCapacity(state.print,w,h);
-  const count=Math.min(state.print.perSheet,cap.total);
   if(previewShell)previewShell.classList.toggle('show-cut-line',!!state.print.cutLine);
-  if(printFitBadge)printFitBadge.textContent=count+' / '+cap.total+' muat';
+  if(printFitBadge){const pages=Math.ceil(state.print.perSheet/Math.max(1,cap.total));printFitBadge.textContent=state.print.perSheet+' label · '+pages+' halaman'}
 }
 function ensurePrintPortal(){
   let portal=el('printSheetPortal');
@@ -1683,7 +1720,8 @@ async function buildPrintSheet(){
   const w=Math.max(40,Math.min(160,parseInt(canvasWidthEl.value||90,10))),h=Math.max(60,Math.min(240,parseInt(canvasHeightEl.value||140,10)));
   const designW=w*PRINT_PREVIEW_PX_PER_MM,designH=h*PRINT_PREVIEW_PX_PER_MM,printScale=PRINT_CSS_PX_PER_MM/PRINT_PREVIEW_PX_PER_MM;
   const cap=printCapacity(state.print,w,h);
-  const count=Math.min(state.print.perSheet,cap.total);
+  const count=state.print.perSheet;
+  const pageCount=Math.ceil(count/Math.max(1,cap.total));
   const pageStyle=el('labelPrintPageStyle')||document.head.appendChild(document.createElement('style'));
   pageStyle.id='labelPrintPageStyle';
   pageStyle.textContent='@page{size:'+state.print.paperW+'mm '+state.print.paperH+'mm;margin:0}';
@@ -1692,6 +1730,7 @@ async function buildPrintSheet(){
   document.body.style.setProperty('--print-margin',state.print.margin+'mm');
   document.body.style.setProperty('--print-gap',state.print.gap+'mm');
   document.body.style.setProperty('--print-cols',cap.cols);
+  document.body.style.setProperty('--print-rows',cap.rows);
   document.body.style.setProperty('--label-print-w',w+'mm');
   document.body.style.setProperty('--label-print-h',h+'mm');
   document.body.style.setProperty('--label-design-w',designW+'px');
@@ -1699,6 +1738,13 @@ async function buildPrintSheet(){
   document.body.style.setProperty('--label-print-scale',printScale.toFixed(8));
   if(printSheet)printSheet.innerHTML='';
   target.innerHTML='';
+  const pages=[];
+  for(let pageIndex=0;pageIndex<pageCount;pageIndex++){
+    const page=document.createElement('div');
+    page.className='print-sheet-page'+(pageIndex===pageCount-1?' is-last':'');
+    target.appendChild(page);
+    pages.push(page);
+  }
   for(let i=0;i<count;i++){
     const slot=document.createElement('div');
     slot.className='print-label-slot'+(state.print.cutLine?' cut-line':'');
@@ -1716,7 +1762,7 @@ async function buildPrintSheet(){
     cloneCanvas.style.setProperty('--label-print-scale',printScale.toFixed(8));
     await materializePrintClone(cloneCanvas);
     slot.appendChild(cloneCanvas);
-    target.appendChild(slot);
+    pages[Math.floor(i/Math.max(1,cap.total))].appendChild(slot);
   }
   await waitForPrintAssets(target);
 }
@@ -1801,7 +1847,22 @@ document.querySelectorAll('[data-element-toggle]').forEach(button=>button.addEve
   load();
 }));
 wireFreeEditor();
-function exportTemplateDesign(){const design=clone(state);delete design.meta;delete design.layout;design.schema='roastery-label-template-v1';return design}
+function exportTemplateDesign(){const design=clone(state);delete design.meta;delete design.layout;design.schema='roastery-label-template-v1';design.assets={artwork_path:galleryPath?.value||galleryPath?.dataset.currentPath||'',logo_path:galleryLogoPath?.value||galleryLogoPath?.dataset.currentPath||'',badge_logo_path:galleryBadgeLogoPath?.value||galleryBadgeLogoPath?.dataset.currentPath||''};return design}
+function applyTemplateAssets(assets){
+  assets=assets&&typeof assets==='object'?assets:{};
+  const setGallery=(input,selector,path)=>{
+    const value=typeof path==='string'?path:'';if(input)input.value=value;
+    if(input)input.dataset.currentPath=value;
+    document.querySelectorAll(selector+' .gallery-tile').forEach(tile=>tile.classList.toggle('active',!!value&&tile.dataset.path===value));
+    return value?document.querySelector(selector+' .gallery-tile.active'):null;
+  };
+  const artPath=setGallery(galleryPath,'#artworkGallery',assets.artwork_path);
+  if(artPath){img.src=artPath.dataset.url;img.style.display='';bg.classList.remove('no-image')}else{img.removeAttribute('src');img.style.display='none';bg.classList.add('no-image')}
+  const logoTile=setGallery(galleryLogoPath,'#logoGallery',assets.logo_path);
+  if(logoEl)logoEl.src=logoTile?.dataset.url||<?php echo json_encode($defaultLogoUrl, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
+  const badgeTile=setGallery(galleryBadgeLogoPath,'#badgeLogoGallery',assets.badge_logo_path);
+  if(badgeLogoEl)badgeLogoEl.src=badgeTile?.dataset.url||logoEl?.src||'';
+}
 function closeTemplateModal(){
   if(!saveTemplateModal)return;
   saveTemplateModal.hidden=true;
@@ -1841,11 +1902,16 @@ if(templateSelect){
   templateSelect.addEventListener('change',function(){
     const option=this.selectedOptions&&this.selectedOptions[0];if(!option)return;
     let templateDesign={};try{templateDesign=JSON.parse(option.dataset.design||'{}')}catch(error){console.error('Template tidak dapat dibaca',error);return}
+    applyTemplateAssets(templateDesign.assets);
     state=merge(defaults,templateDesign);state.elements=Array.isArray(state.elements)?state.elements:[];
-    isBlankCanvas=!!templateDesign.canvas?.blankCanvas;
-    if(isBlankCanvas){state.canvas.blankCanvas=true;Object.keys(state.blocks).forEach(key=>{if(!Object.prototype.hasOwnProperty.call((templateDesign.blocks||{})[key]||{},'visible'))state.blocks[key].visible=false})}else delete state.canvas.blankCanvas;
+    isDefaultBlankTemplate=option.value==='classic-portrait';
+    isBlankNew=isDefaultBlankTemplate||!!templateDesign.canvas?.blankCanvas;
+    isBlankCanvas=isBlankNew||!!templateDesign.canvas?.blankCanvas;
+    if(isBlankCanvas){if(isDefaultBlankTemplate)state.elements=[];state.canvas.blankCanvas=true;Object.keys(state.blocks).forEach(key=>{if(isDefaultBlankTemplate||!Object.prototype.hasOwnProperty.call((templateDesign.blocks||{})[key]||{},'visible'))state.blocks[key].visible=false})}else delete state.canvas.blankCanvas;
     document.querySelector('.coffee-label-page')?.classList.toggle('is-blank-label',isBlankCanvas);
     el('templateIdInput').value=option.dataset.templateId||'0';
+    const returnTemplateId=saveTemplateForm?.querySelector('[name="return_template_id"]');
+    if(returnTemplateId)returnTemplateId.value=option.dataset.templateId||'0';
     canvasWidthEl.value=state.canvas.width||90;canvasHeightEl.value=state.canvas.height||140;
     themePresetEl.value=state.canvas.theme||'heritage-cream';artworkModeEl.value=state.canvas.artworkMode||'full';
     if(artworkFitEl)artworkFitEl.value=state.canvas.artworkFit||'stretch';if(patternModeEl)patternModeEl.value=state.canvas.patternMode||'contour';
@@ -1860,10 +1926,10 @@ addTasteNote.addEventListener('click',function(){forceBlankTasteRow=true;renderT
 document.querySelectorAll('#artworkGallery .gallery-tile').forEach(tile=>tile.addEventListener('click',function(){document.querySelectorAll('#artworkGallery .gallery-tile').forEach(t=>t.classList.remove('active'));this.classList.add('active');galleryPath.value=this.dataset.path||'';img.src=this.dataset.url||'';img.style.display='';bg.classList.remove('no-image');if(isUniversalTemplate)refreshUniversalPreview()}));
 document.querySelectorAll('#logoGallery .gallery-tile').forEach(tile=>tile.addEventListener('click',function(){document.querySelectorAll('#logoGallery .gallery-tile').forEach(t=>t.classList.remove('active'));this.classList.add('active');galleryLogoPath.value=this.dataset.path||'';if(logoEl)logoEl.src=this.dataset.url||logoEl.src}));
 document.querySelectorAll('#badgeLogoGallery .gallery-tile').forEach(tile=>tile.addEventListener('click',function(){document.querySelectorAll('#badgeLogoGallery .gallery-tile').forEach(t=>t.classList.remove('active'));this.classList.add('active');galleryBadgeLogoPath.value=this.dataset.path||'';if(badgeLogoEl)badgeLogoEl.src=this.dataset.url||badgeLogoEl.src}));
-imageInput.addEventListener('change',function(){const f=this.files&&this.files[0];if(!f)return;if(f.type!=='image/png'){alert('Artwork harus PNG.');this.value='';return}galleryPath.value='';document.querySelectorAll('#artworkGallery .gallery-tile').forEach(t=>t.classList.remove('active'));const r=new FileReader();r.onload=e=>{img.src=e.target.result;img.style.display='';bg.classList.remove('no-image');if(isUniversalTemplate)refreshUniversalPreview()};r.readAsDataURL(f)});
+imageInput.addEventListener('change',function(){const f=this.files&&this.files[0];if(!f)return;if(f.type!=='image/png'){alert('Artwork harus PNG.');this.value='';return}galleryPath.value='';galleryPath.dataset.currentPath='';document.querySelectorAll('#artworkGallery .gallery-tile').forEach(t=>t.classList.remove('active'));const r=new FileReader();r.onload=e=>{img.src=e.target.result;img.style.display='';bg.classList.remove('no-image');if(isUniversalTemplate)refreshUniversalPreview()};r.readAsDataURL(f)});
 function isLogoFile(f){return !!f&&(f.type==='image/png'||f.type==='image/svg+xml'||/\.svg$/i.test(f.name||''))}
-logoInput.addEventListener('change',function(){const f=this.files&&this.files[0];if(!f)return;if(!isLogoFile(f)){alert('Logo harus PNG atau SVG.');this.value='';return}galleryLogoPath.value='';document.querySelectorAll('#logoGallery .gallery-tile').forEach(t=>t.classList.remove('active'));const r=new FileReader();r.onload=e=>{if(logoEl)logoEl.src=e.target.result};r.readAsDataURL(f)});
-badgeLogoInput.addEventListener('change',function(){const f=this.files&&this.files[0];if(!f)return;if(!isLogoFile(f)){alert('Logo badge harus PNG atau SVG.');this.value='';return}galleryBadgeLogoPath.value='';document.querySelectorAll('#badgeLogoGallery .gallery-tile').forEach(t=>t.classList.remove('active'));const r=new FileReader();r.onload=e=>{if(badgeLogoEl)badgeLogoEl.src=e.target.result};r.readAsDataURL(f)});
+logoInput.addEventListener('change',function(){const f=this.files&&this.files[0];if(!f)return;if(!isLogoFile(f)){alert('Logo harus PNG atau SVG.');this.value='';return}galleryLogoPath.value='';galleryLogoPath.dataset.currentPath='';document.querySelectorAll('#logoGallery .gallery-tile').forEach(t=>t.classList.remove('active'));const r=new FileReader();r.onload=e=>{if(logoEl)logoEl.src=e.target.result};r.readAsDataURL(f)});
+badgeLogoInput.addEventListener('change',function(){const f=this.files&&this.files[0];if(!f)return;if(!isLogoFile(f)){alert('Logo badge harus PNG atau SVG.');this.value='';return}galleryBadgeLogoPath.value='';galleryBadgeLogoPath.dataset.currentPath='';document.querySelectorAll('#badgeLogoGallery .gallery-tile').forEach(t=>t.classList.remove('active'));const r=new FileReader();r.onload=e=>{if(badgeLogoEl)badgeLogoEl.src=e.target.result};r.readAsDataURL(f)});
 window.addEventListener('pointermove',moveDrag);
 window.addEventListener('pointerup',endDrag);
 window.addEventListener('pointercancel',endDrag);

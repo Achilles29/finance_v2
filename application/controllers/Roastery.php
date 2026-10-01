@@ -31,7 +31,9 @@ class Roastery extends MY_Controller
 
         $tableReady = $this->Coffee_packaging_label_model->table_ready();
         $editId = (int)$this->input->get('edit', true);
-        $newMode = (int)$this->input->get('new', true) === 1;
+        $newQueryValue = $_GET['new'] ?? null;
+        $newMode = array_key_exists('new', $_GET)
+            && ($newQueryValue === null || (is_scalar($newQueryValue) && in_array(strtolower((string)$newQueryValue), ['', '1', 'true'], true)));
         $requestedTemplateRaw = trim((string)$this->input->get('template', true));
         $requestedTemplateId = max(0, (int)$this->input->get('template_id', true));
         $editRow = $editId > 0 && $tableReady ? $this->Coffee_packaging_label_model->find($editId) : null;
@@ -46,7 +48,8 @@ class Roastery extends MY_Controller
         }
 
         $formMode = $newMode || $editId > 0;
-        $templates = $this->Coffee_packaging_label_model->list_templates();
+        $manageTemplates = (int)$this->input->get('manage_templates', true) === 1;
+        $templates = $this->Coffee_packaging_label_model->list_templates($manageTemplates);
         $labelDesign = json_decode((string)($editRow['design_json'] ?? ''), true);
         $labelDesign = is_array($labelDesign) ? $labelDesign : [];
         $storedTemplateId = max(0, (int)($labelDesign['meta']['template_id'] ?? 0));
@@ -74,6 +77,9 @@ class Roastery extends MY_Controller
         if (!$selectedTemplate && !empty($templates)) {
             $selectedTemplate = $templates[0];
         }
+        if (!empty($selectedTemplate['template_key'])) {
+            $selectedTemplateKey = (string)$selectedTemplate['template_key'];
+        }
         $applyTemplate = $formMode && ($requestedTemplateId > 0 || $requestedTemplateRaw !== '');
         $editorDesignJson = ($applyTemplate || $newMode) && !empty($selectedTemplate['design_json'])
             ? (string)$selectedTemplate['design_json']
@@ -91,6 +97,7 @@ class Roastery extends MY_Controller
             'edit_row' => $editRow,
             'form_mode' => $newMode || $editId > 0,
             'label_templates' => $templates,
+            'manage_templates' => $manageTemplates,
             'selected_template' => $selectedTemplate,
             'apply_template' => $applyTemplate,
             'editor_design_json' => $editorDesignJson,
@@ -107,6 +114,9 @@ class Roastery extends MY_Controller
         $this->require_permission(self::PAGE_PACKAGING_LABEL, $id > 0 ? 'edit' : 'create');
         $templateId = max(0, (int)$this->input->post('template_id', true));
         $returnUrl = 'roastery/packaging-labels' . ($id > 0 ? '?edit=' . $id : '?new=1');
+        if ($templateId > 0) {
+            $returnUrl .= '&template_id=' . $templateId;
+        }
         $hasMediaUpload = !empty($_FILES['label_image']['name'])
             || !empty($_FILES['logo_image']['name'])
             || !empty($_FILES['badge_logo_image']['name']);
@@ -120,14 +130,14 @@ class Roastery extends MY_Controller
 
         if (!$this->Coffee_packaging_label_model->table_ready()) {
             $this->session->set_flashdata('error', 'Tabel label packaging kopi belum ada. Jalankan SQL 2026-07-26a terlebih dahulu.');
-            redirect('roastery/packaging-labels');
+            redirect($returnUrl);
             return;
         }
 
         $existing = $id > 0 ? $this->Coffee_packaging_label_model->find($id) : null;
         if ($id > 0 && empty($existing)) {
             $this->session->set_flashdata('error', 'Label tidak ditemukan.');
-            redirect('roastery/packaging-labels');
+            redirect($returnUrl);
             return;
         }
 
@@ -143,11 +153,6 @@ class Roastery extends MY_Controller
         $origin = trim((string)$this->input->post('origin', true));
         $processMethod = trim((string)$this->input->post('process_method', true));
         $productId = max(0, (int)$this->input->post('product_id', true));
-        if ($labelName === '') {
-            $this->session->set_flashdata('error', 'Nama label wajib diisi agar variasi label mudah dibedakan.');
-            redirect($returnUrl);
-            return;
-        }
         if ($productId > 0) {
             $product = $this->Coffee_packaging_label_model->find_roastery_product($productId);
             if (empty($product)) {
@@ -162,8 +167,18 @@ class Roastery extends MY_Controller
             redirect($returnUrl);
             return;
         }
+        if ($labelName === '') {
+            $labelName = $coffeeName;
+        }
 
-        $designJson = $this->sanitize_design_json((string)$this->input->post('design_json', false));
+        $postedDesignJson = (string)$this->input->post('design_json', false);
+        $postedDesign = json_decode($postedDesignJson, true);
+        $designJson = $this->sanitize_design_json($postedDesignJson);
+        if (!is_array($postedDesign) || !is_array($postedDesign['canvas'] ?? null) || !is_array($postedDesign['blocks'] ?? null) || $designJson === '{}') {
+            $this->session->set_flashdata('error', 'Desain label belum terbaca. Muat ulang editor lalu simpan kembali.');
+            redirect($returnUrl);
+            return;
+        }
         $designData = json_decode($designJson, true);
         if (!is_array($designData)) {
             $designData = [];
@@ -276,39 +291,47 @@ class Roastery extends MY_Controller
         $savedId = $this->Coffee_packaging_label_model->save($data, $id);
         if ($savedId <= 0) {
             $this->session->set_flashdata('error', 'Gagal menyimpan label packaging kopi.');
-            redirect('roastery/packaging-labels');
+            redirect($returnUrl);
             return;
         }
 
         $this->session->set_flashdata('success', 'Label packaging kopi berhasil disimpan. Preview dan cetak memakai desain yang sama.');
-        redirect('roastery/packaging-labels');
+        redirect('roastery/packaging-labels?edit=' . $savedId);
     }
 
     public function packaging_label_template_save()
     {
-        $this->require_permission(self::PAGE_PACKAGING_LABEL, 'create');
         if (strtoupper((string)$this->input->method(true)) !== 'POST') {
             show_404();
             return;
         }
+        $returnId = max(0, (int)$this->input->post('return_label_id', true));
+        $returnTemplateId = max(0, (int)$this->input->post('return_template_id', true));
+        $this->require_permission(self::PAGE_PACKAGING_LABEL, $returnId > 0 ? 'edit' : 'create');
+        $templateReturnUrl = 'roastery/packaging-labels?' . http_build_query([
+            $returnId > 0 ? 'edit' : 'new' => $returnId > 0 ? $returnId : 1,
+            'template_id' => $returnTemplateId,
+        ]);
 
         if (!$this->Coffee_packaging_label_model->template_table_ready()) {
             $this->session->set_flashdata('error', 'Penyimpanan template belum siap. Jalankan migrasi Label Studio terlebih dahulu.');
-            redirect('roastery/packaging-labels');
+            redirect($templateReturnUrl);
             return;
         }
 
         $templateName = trim((string)$this->input->post('template_name', true));
         if ($templateName === '') {
             $this->session->set_flashdata('error', 'Nama template wajib diisi.');
-            redirect('roastery/packaging-labels');
+            redirect($templateReturnUrl);
             return;
         }
         $templateName = substr($templateName, 0, 160);
-        $designJson = $this->sanitize_template_design_json((string)$this->input->post('template_design_json', false));
-        if ($designJson === '{}') {
+        $postedDesignJson = (string)$this->input->post('template_design_json', false);
+        $postedDesign = json_decode($postedDesignJson, true);
+        $designJson = $this->sanitize_template_design_json($postedDesignJson);
+        if (!is_array($postedDesign) || !is_array($postedDesign['canvas'] ?? null) || !is_array($postedDesign['blocks'] ?? null) || $designJson === '{}') {
             $this->session->set_flashdata('error', 'Desain template tidak valid. Kembali ke editor lalu coba simpan ulang.');
-            redirect('roastery/packaging-labels');
+            redirect($templateReturnUrl);
             return;
         }
 
@@ -325,11 +348,10 @@ class Roastery extends MY_Controller
         ]);
         if ($newId <= 0) {
             $this->session->set_flashdata('error', 'Template belum dapat disimpan.');
-            redirect('roastery/packaging-labels');
+            redirect($templateReturnUrl);
             return;
         }
 
-        $returnId = max(0, (int)$this->input->post('return_label_id', true));
         $this->session->set_flashdata('success', 'Template baru berhasil disimpan. Pilih lalu simpan label untuk menerapkannya.');
         redirect('roastery/packaging-labels?' . http_build_query([
             $returnId > 0 ? 'edit' : 'new' => $returnId > 0 ? $returnId : 1,
@@ -348,7 +370,7 @@ class Roastery extends MY_Controller
         $id = (int)$id;
         $ok = $this->Coffee_packaging_label_model->delete_custom_template($id, (int)($this->current_user['id'] ?? 0));
         $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'Template kustom dinonaktifkan.' : 'Template sistem tidak dapat dihapus atau template tidak ditemukan.');
-        redirect('roastery/packaging-labels');
+        redirect('roastery/packaging-labels?manage_templates=1');
     }
 
     public function packaging_label_duplicate($id)
@@ -661,6 +683,13 @@ class Roastery extends MY_Controller
         }
         if (isset($decoded['elements'])) {
             $design['elements'] = $this->sanitize_canvas_elements($decoded['elements']);
+        }
+        $assets = is_array($decoded['assets'] ?? null) ? $decoded['assets'] : [];
+        foreach (['artwork_path' => 'uploads/coffee-labels/', 'logo_path' => 'uploads/coffee-labels/logos/', 'badge_logo_path' => 'uploads/coffee-labels/logos/'] as $key => $prefix) {
+            $path = str_replace('\\', '/', trim((string)($assets[$key] ?? '')));
+            if ($path !== '' && strpos($path, $prefix) === 0 && strpos($path, '..') === false && preg_match('/^[a-zA-Z0-9_\/. -]+$/', $path)) {
+                $design['assets'][$key] = $path;
+            }
         }
 
         return json_encode($design, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);

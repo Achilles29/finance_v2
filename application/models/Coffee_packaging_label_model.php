@@ -127,10 +127,12 @@ class Coffee_packaging_label_model extends CI_Model
             $data['updated_by'] = $userId;
         }
 
-        return (bool)$this->db
+        $updated = $this->db
             ->where('id', $id)
             ->where('is_system', 0)
+            ->where('is_active', 1)
             ->update(self::TEMPLATE_TABLE, $data);
+        return (bool)$updated && $this->db->affected_rows() > 0;
     }
 
     public function next_template_key(string $templateName): string
@@ -247,15 +249,28 @@ class Coffee_packaging_label_model extends CI_Model
 
         if ($id > 0) {
             $data['updated_at'] = date('Y-m-d H:i:s');
-            $this->db->where('id', $id)->update(self::TABLE, $data);
+            $updated = $this->db->where('id', $id)->update(self::TABLE, $data);
+            if (!$updated || $this->db->trans_status() === false) {
+                $error = $this->db->error();
+                log_message('error', 'Packaging label update failed; database error code ' . (int)($error['code'] ?? 0));
+                return 0;
+            }
             return $id;
         }
 
         $data['label_code'] = $data['label_code'] ?? $this->next_label_code();
         $data['created_at'] = date('Y-m-d H:i:s');
         $data['updated_at'] = date('Y-m-d H:i:s');
-        $this->db->insert(self::TABLE, $data);
-        return (int)$this->db->insert_id();
+        if (!$this->db->insert(self::TABLE, $data)) {
+            $error = $this->db->error();
+            log_message('error', 'Packaging label insert failed; database error code ' . (int)($error['code'] ?? 0));
+            return 0;
+        }
+        $savedId = (int)$this->db->insert_id();
+        if ($savedId <= 0) {
+            log_message('error', 'Packaging label insert returned no record ID.');
+        }
+        return $savedId;
     }
 
     public function set_active(int $id, bool $active, ?int $userId = null): bool

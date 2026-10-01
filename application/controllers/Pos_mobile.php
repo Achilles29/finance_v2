@@ -321,6 +321,88 @@ class Pos_mobile extends CI_Controller
         ]);
     }
 
+    public function catalog_availability_refresh(): void
+    {
+        if (!$this->require_mobile_post() || !$this->authorize_mobile(true)) {
+            return;
+        }
+        if (!$this->mobile_permission($this->mobile_order_workspace_page_code('view'), 'view')) {
+            return;
+        }
+        if (!is_array($this->mobileUser)) {
+            $this->json_error('Token perangkat POS diperlukan.', 403);
+            return;
+        }
+        $binding = $this->mobile_reader_binding_context();
+        if ($binding === null) {
+            return;
+        }
+        if (!$this->db->table_exists('pos_product_availability_cache')) {
+            $this->json_error('Cache stok POS di Finance belum tersedia.', 503);
+            return;
+        }
+
+        $requested = $this->request_payload()['product_ids'] ?? null;
+        if (!is_array($requested) || count($requested) < 1 || count($requested) > 8) {
+            $this->json_error('Pilih 1 sampai 8 produk untuk sinkronisasi stok.', 422);
+            return;
+        }
+        $productIds = [];
+        foreach ($requested as $id) {
+            if ((!is_int($id) && (!is_string($id) || !ctype_digit($id))) || (int)$id <= 0) {
+                $this->json_error('ID produk tidak valid.', 422);
+                return;
+            }
+            $productIds[(int)$id] = (int)$id;
+        }
+        $productIds = array_values($productIds);
+
+        $db = $this->db->select('p.id, pac.availability_status, pac.estimated_available_qty, pac.is_dirty')
+            ->from('mst_product p')
+            ->join('pos_product_availability_cache pac', 'pac.product_id = p.id AND pac.outlet_id = ' . $this->db->escape($binding['outlet_id']), 'left', false)
+            ->where_in('p.id', $productIds)
+            ->where('p.is_active', 1);
+        if ($this->db->field_exists('show_pos', 'mst_product')) {
+            $db->where('p.show_pos', 1);
+        }
+        if ($this->db->field_exists('show_in_cashier', 'mst_product')) {
+            $db->where('p.show_in_cashier', 1);
+        }
+        $products = $db->get()->result_array();
+        if ($products === []) {
+            $this->json_error('Produk POS tidak ditemukan.', 404);
+            return;
+        }
+
+        $this->load->library('PosAvailabilityRebuildService');
+        $rows = [];
+        $failed = count($productIds) - count($products);
+        foreach ($products as $product) {
+            $cache = $product;
+            if (empty($cache['availability_status']) || !empty($cache['is_dirty'])) {
+                $result = $this->posavailabilityrebuildservice->rebuild_product(
+                    (int)$binding['outlet_id'],
+                    (int)$product['id'],
+                    [
+                        'event_source' => 'MOBILE_CATALOG_SYNC',
+                        'actor_employee_id' => $this->current_actor_employee_id(),
+                    ]
+                );
+                if (!($result['ok'] ?? false)) {
+                    $failed++;
+                    continue;
+                }
+                $cache = (array)($result['cache'] ?? []);
+            }
+            $rows[] = [
+                'product_id' => (int)$product['id'],
+                'availability_status' => (string)($cache['availability_status'] ?? ''),
+                'estimated_available_qty' => (float)($cache['estimated_available_qty'] ?? 0),
+            ];
+        }
+        $this->json_ok(['rows' => $rows, 'failed_count' => $failed]);
+    }
+
     private function mobile_reader_binding_context(): ?array
     {
         $outletId = max(0, (int)($this->mobileUser['outlet_id'] ?? 0));

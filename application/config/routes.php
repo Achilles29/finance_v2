@@ -753,6 +753,7 @@ $route['pos-mobile/auth/login'] = 'pos_mobile/login';
 $route['pos-mobile/auth/logout'] = 'pos_mobile/logout';
 $route['pos-mobile/bootstrap'] = 'pos_mobile/bootstrap';
 $route['pos-mobile/catalog'] = 'pos_mobile/catalog';
+$route['pos-mobile/catalog/availability/refresh'] = 'pos_mobile/catalog_availability_refresh';
 $route['pos-mobile/members/search'] = 'pos_mobile/member_search';
 $route['pos-mobile/products/extra-options'] = 'pos_mobile/extra_options';
 $route['pos-mobile/printers'] = 'pos_mobile/printers';

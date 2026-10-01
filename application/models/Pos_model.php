@@ -6861,6 +6861,7 @@ class Pos_model extends CI_Model
             $select[] = 'pac.availability_status';
             $select[] = 'pac.source_mode';
             $select[] = 'pac.estimated_available_qty';
+            $select[] = 'pac.is_dirty';
             $select[] = 'pac.bottleneck_name_snapshot';
             $select[] = 'pac.override_allowed';
             $select[] = 'pac.hpp_live_snapshot AS availability_hpp_live_snapshot';

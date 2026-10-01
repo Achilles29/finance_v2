@@ -200,7 +200,9 @@ $check(
         && strpos($source['view'], 'const count=state.print.perSheet;') !== false
         && strpos($source['view'], 'const pageCount=Math.ceil(count/Math.max(1,cap.total));') !== false
         && strpos($source['view'], 'pages[Math.floor(i/Math.max(1,cap.total))].appendChild(slot)') !== false
-        && strpos($source['view'], 'print-sheet-page.is-last') !== false,
+        && strpos($source['view'], 'print-sheet-page.is-last') !== false
+        && strpos($source['view'], "state.print.paper+' '+(state.print.orientation==='landscape'?'landscape':'portrait')") !== false
+        && strpos($source['view'], '@page{size:A4 portrait') === false,
     'editor exposes direct element visibility, drag handling, and shared print-sheet rendering'
 );
 $check(

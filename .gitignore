@@ -25,12 +25,12 @@ user_guide_src/cilexer/pycilexer.egg-info/*
 !/backup/logs/.gitkeep
 
 # Customer/runtime data stays on the server and must never enter source commits.
-/uploads/*
-!/uploads/.gitkeep
-/tmp/*
-!/tmp/.gitkeep
-/output/*
-!/output/.gitkeep
+# /uploads/*
+# !/uploads/.gitkeep
+# /tmp/*
+# !/tmp/.gitkeep
+# /output/*
+# !/output/.gitkeep
 
 # Local agent/editor/runtime state is not part of the application release.
 /.codex/

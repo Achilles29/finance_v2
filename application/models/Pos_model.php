@@ -7926,6 +7926,102 @@ class Pos_model extends CI_Model
         }
         return $this->direct_print_targets_from_config_for_order_confirm($orderId, $snapshotId);
     }
+
+    public function render_mobile_print_document(string $eventCode, int $documentId, int $layoutId, int $paperWidth, int $charsPerLine, string $lineScope = 'ALL', int $productDivisionId = 0): array
+    {
+        $documentTypes = [
+            'ORDER_CONFIRM_KOT' => 'KITCHEN_TICKET',
+            'ORDER_PRE_BILL' => 'RECEIPT',
+            'ORDER_PAID_RECEIPT' => 'RECEIPT',
+            'SHIFT_CLOSE_SUMMARY' => 'SHIFT_CLOSE',
+            'VOID_SLIP' => 'VOID_SLIP',
+            'REFUND_SLIP' => 'REFUND_SLIP',
+        ];
+        $eventCode = strtoupper(trim($eventCode));
+        if ($documentId <= 0 || !isset($documentTypes[$eventCode])) {
+            return ['ok' => false, 'message' => 'Jenis dokumen cetak APK tidak valid.'];
+        }
+        $printerConfig = $this->printer_config_model();
+        if (!$printerConfig || !$printerConfig->ready()) {
+            return ['ok' => false, 'message' => 'Layout cetak Finance belum tersedia.'];
+        }
+        $documentType = $documentTypes[$eventCode];
+        $layout = $layoutId > 0 ? $printerConfig->find_layout($layoutId) : null;
+        if ($layoutId <= 0) {
+            $rows = $printerConfig->layout_rows(['document_type' => $documentType, 'status' => 'ACTIVE', 'limit' => 100]);
+            $layout = (array)($rows['rows'][0] ?? []);
+        }
+        if (!$layout || (int)($layout['is_active'] ?? 0) !== 1 || strtoupper((string)($layout['document_type'] ?? '')) !== $documentType) {
+            return ['ok' => false, 'message' => 'Layout dokumen aktif tidak ditemukan di Finance.'];
+        }
+        $paperWidth = $paperWidth === 58 ? 58 : 80;
+        $charsPerLine = $this->normalize_printer_chars_per_line($paperWidth, $charsPerLine);
+        $general = (array)($printerConfig->general_settings(0)['payload'] ?? []);
+        $template = [
+            'document_type' => $documentType,
+            'payload' => $printerConfig->layout_payload($layout, $general),
+        ];
+        $printer = [
+            'paper_width_mm' => $paperWidth,
+            'chars_per_line' => $charsPerLine,
+            'printer_role' => $documentType === 'KITCHEN_TICKET' ? 'KITCHEN' : 'CASHIER',
+        ];
+        $text = '';
+        if ($eventCode === 'ORDER_CONFIRM_KOT' || $eventCode === 'ORDER_PRE_BILL') {
+            $order = $this->find_order_draft($documentId);
+            if (!$order) {
+                return ['ok' => false, 'message' => 'Order POS tidak ditemukan.'];
+            }
+            if ($eventCode === 'ORDER_PRE_BILL') {
+                $text = $this->build_direct_order_prebill_text($order, $printer, $template);
+            } else {
+                $lines = (array)($order['lines'] ?? []);
+                if (strtoupper($lineScope) === 'LATEST') {
+                    $lineIds = $this->resolve_direct_print_line_ids_for_snapshot($documentId, 0);
+                    if (is_array($lineIds)) {
+                        if (!$lineIds) {
+                            return ['ok' => false, 'message' => 'Item pesanan terbaru belum tersedia untuk dicetak.'];
+                        }
+                        $lineMap = array_fill_keys($lineIds, true);
+                        $lines = array_values(array_filter($lines, static function ($line) use ($lineMap): bool {
+                            return isset($lineMap[(int)($line['id'] ?? 0)]);
+                        }));
+                    }
+                }
+                if ($productDivisionId > 0) {
+                    $lines = $this->configured_route_lines($lines, [
+                        'content_scope' => 'DIVISION',
+                        'product_division_id' => $productDivisionId,
+                    ]);
+                }
+                $printLines = array_map(function ($line) {
+                    return $this->build_direct_print_order_line((array)$line);
+                }, $lines);
+                if (!$printLines) {
+                    if ($productDivisionId > 0) {
+                        return ['ok' => true, 'skip' => true, 'layout_id' => (int)$layout['id'], 'document_type' => $documentType];
+                    }
+                    return ['ok' => false, 'message' => 'Item pesanan untuk dicetak tidak tersedia.'];
+                }
+                $text = $this->build_direct_kot_text((array)$order['header'], $printLines, $printer, $template);
+            }
+        } elseif ($eventCode === 'ORDER_PAID_RECEIPT') {
+            $document = $this->find_payment_print_document($documentId);
+            if (!$document) return ['ok' => false, 'message' => 'Dokumen pembayaran tidak ditemukan.'];
+            $text = $this->build_direct_payment_receipt_text($document, $printer, $template);
+        } elseif ($eventCode === 'SHIFT_CLOSE_SUMMARY') {
+            $report = (array)$this->shift_close_report($documentId);
+            if (empty($report['shift'])) return ['ok' => false, 'message' => 'Laporan tutup kasir tidak ditemukan.'];
+            $text = $this->build_direct_shift_close_receipt_text($report, $printer, $template);
+        } else {
+            $document = $eventCode === 'VOID_SLIP'
+                ? $this->find_void_print_document($documentId)
+                : $this->find_refund_print_document($documentId);
+            if (!$document) return ['ok' => false, 'message' => 'Dokumen pembatalan tidak ditemukan.'];
+            $text = $this->build_direct_reversal_slip_text($eventCode, $document, $printer, $template);
+        }
+        return ['ok' => true, 'text' => $text, 'layout_id' => (int)$layout['id'], 'document_type' => $documentType];
+    }
     public function direct_print_targets_for_order_reprint(int $orderId, array $options = []): array
     {
         if ($orderId <= 0) {

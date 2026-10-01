@@ -594,6 +594,7 @@ final class PosMobileSmokePrintModel
     public bool $readyResult = false;
     public array $connectionRowsResult = ['rows' => [], 'meta' => ['total' => 0, 'page' => 1, 'limit' => 100, 'total_pages' => 1]];
     public array $routeRowsResult = ['rows' => []];
+    public array $layoutRowsResult = ['rows' => []];
     public ?array $findConnectionResult = null;
     public ?array $findScopedConnectionResult = null;
     public ?array $findMobileRouteResult = null;
@@ -623,6 +624,11 @@ final class PosMobileSmokePrintModel
         $this->routeRowsCalls++;
         $this->lastRouteFilters = $filters;
         return $this->routeRowsResult;
+    }
+
+    public function layout_rows(array $filters = []): array
+    {
+        return $this->layoutRowsResult;
     }
 
     public function find_connection(int $id): ?array

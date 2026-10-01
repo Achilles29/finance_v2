@@ -1333,6 +1333,19 @@ class Pos_mobile extends CI_Controller
                 'meta' => $catalog['meta'] ?? ['total' => count($rows), 'page' => 1, 'limit' => count($rows), 'total_pages' => 1],
                 'config_source' => 'pos_print_connection/pos_print_layout/pos_print_route/pos_print_general_setting',
                 'general' => $general,
+                'layouts' => $isBearer
+                    ? array_map(static function (array $layout): array {
+                        return [
+                            'id' => (int)($layout['id'] ?? 0),
+                            'layout_name' => (string)($layout['layout_name'] ?? ''),
+                            'document_type' => (string)($layout['document_type'] ?? ''),
+                            'is_default' => (int)($layout['is_default'] ?? 0),
+                        ];
+                    }, (array)($this->Pos_print_model->layout_rows(['status' => 'ACTIVE', 'limit' => 100])['rows'] ?? []))
+                    : [],
+                'printer_divisions' => $isBearer
+                    ? (array)($this->Pos_model->cashier_catalog_filter_options()['divisions'] ?? [])
+                    : [],
             ]);
             return;
         }
@@ -1341,6 +1354,106 @@ class Pos_mobile extends CI_Controller
             'Konfigurasi printer pos_print_* belum siap. Jalankan migration konfigurasi printer baru terlebih dahulu.',
             503
         );
+    }
+
+    public function mobile_print_documents(): void
+    {
+        if (!$this->require_mobile_post() || !$this->authorize_mobile(true)) {
+            return;
+        }
+        if (!is_array($this->mobileUser)) {
+            $this->json_error('Cetak Bluetooth hanya tersedia untuk perangkat APK terdaftar.', 403);
+            return;
+        }
+        if (!$this->mobile_permission($this->mobile_order_workspace_page_code('view'), 'view')) {
+            return;
+        }
+        $payload = $this->request_payload();
+        $eventCode = strtoupper(trim((string)($payload['event_code'] ?? '')));
+        $documentId = max(0, (int)($payload['document_id'] ?? 0));
+        $allowed = ['ORDER_CONFIRM_KOT', 'ORDER_PRE_BILL', 'ORDER_PAID_RECEIPT', 'SHIFT_CLOSE_SUMMARY', 'VOID_SLIP', 'REFUND_SLIP'];
+        $printers = $payload['printers'] ?? null;
+        if (!in_array($eventCode, $allowed, true) || $documentId <= 0 || !is_array($printers) || count($printers) < 1 || count($printers) > 10) {
+            $this->json_error('Permintaan cetak APK tidak valid.', 422);
+            return;
+        }
+        if (in_array($eventCode, ['ORDER_CONFIRM_KOT', 'ORDER_PRE_BILL'], true)) {
+            if ($this->mobile_financial_order_context($documentId) === null) return;
+        } elseif (in_array($eventCode, ['ORDER_PAID_RECEIPT', 'VOID_SLIP', 'REFUND_SLIP'], true)) {
+            $type = $eventCode === 'ORDER_PAID_RECEIPT' ? 'PAYMENT' : ($eventCode === 'VOID_SLIP' ? 'VOID' : 'REFUND');
+            if (!$this->require_mobile_print_document_outlet($type, $documentId)) return;
+        } else {
+            $report = (array)$this->Pos_model->shift_close_report($documentId);
+            $shift = (array)($report['shift'] ?? []);
+            if (
+                !$shift
+                || (int)($shift['outlet_id'] ?? 0) !== (int)$this->mobileUser['outlet_id']
+                || (int)($shift['cashier_close_employee_id'] ?? 0) !== (int)$this->mobileUser['employee_id']
+            ) {
+                $this->json_error('Laporan kasir tidak ditemukan.', 404);
+                return;
+            }
+        }
+        $lineScope = strtoupper(trim((string)($payload['line_scope'] ?? 'ALL')));
+        if (!in_array($lineScope, ['ALL', 'LATEST'], true)) {
+            $this->json_error('Pilihan item cetak tidak valid.', 422);
+            return;
+        }
+        $needsReprintProof = !empty($payload['reprint'])
+            || $eventCode === 'ORDER_PRE_BILL'
+            || ($eventCode === 'ORDER_CONFIRM_KOT' && $lineScope === 'ALL');
+        if ($needsReprintProof) {
+            if ($eventCode !== 'ORDER_CONFIRM_KOT' && $eventCode !== 'ORDER_PRE_BILL') {
+                $this->json_error('Cetak ulang tidak valid.', 422);
+                return;
+            }
+            if (!$this->consume_mobile_order_reversal_step_up('ORDER_REPRINT', $documentId, $payload)) return;
+        }
+        $targets = [];
+        foreach ($printers as $printer) {
+            if (!is_array($printer)) {
+                $this->json_error('Pengaturan printer APK tidak valid.', 422);
+                return;
+            }
+            $localId = (int)($printer['local_printer_id'] ?? 0);
+            $paperWidth = (int)($printer['paper_width_mm'] ?? 0);
+            $chars = (int)($printer['chars_per_line'] ?? 0);
+            if ($localId === 0 || !in_array($paperWidth, [58, 80], true) || $chars < 24 || $chars > 64) {
+                $this->json_error('Pengaturan printer APK tidak valid.', 422);
+                return;
+            }
+            $rendered = $this->Pos_model->render_mobile_print_document(
+                $eventCode,
+                $documentId,
+                max(0, (int)($printer['layout_id'] ?? 0)),
+                $paperWidth,
+                $chars,
+                $lineScope,
+                max(0, (int)($printer['product_division_id'] ?? 0))
+            );
+            if (empty($rendered['ok'])) {
+                $this->json_error((string)($rendered['message'] ?? 'Dokumen belum dapat dicetak.'), 422);
+                return;
+            }
+            if (!empty($rendered['skip'])) {
+                continue;
+            }
+            $targets[] = [
+                'printer_id' => $localId,
+                'printer_name' => trim((string)($printer['name'] ?? 'Printer APK')),
+                'event_code' => $eventCode,
+                'document_type' => (string)$rendered['document_type'],
+                'layout_id' => (int)$rendered['layout_id'],
+                'text' => (string)$rendered['text'],
+                'copies' => max(1, min(10, (int)($printer['copies'] ?? 1))),
+                'cut_mode' => (string)($printer['cut_mode'] ?? 'PARTIAL'),
+                'open_drawer' => !empty($printer['open_drawer']) ? 1 : 0,
+            ];
+        }
+        $this->json_ok([
+            'direct_print_targets' => $this->mobile_print_targets($targets),
+            'skipped' => count($targets) === 0,
+        ]);
     }
 
     /**
@@ -2893,6 +3006,7 @@ class Pos_mobile extends CI_Controller
         $this->json_ok([
             'id' => $orderId,
             'reservation_id' => $reservationId,
+            'payment_id' => $paymentId,
             'snapshot_id' => $snapshotId,
             'commit_no' => $commitNo,
             'runtime_job_id' => $jobId,

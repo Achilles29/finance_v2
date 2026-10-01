@@ -62,6 +62,7 @@ user_guide_src/cilexer/pycilexer.egg-info/*
 # Runtime logs and process markers are server state, not source history.
 /wa-engine/*.log
 /wa-engine/*.pid
+/tools/pos_printer_agent/agent.log
 
 # Server database credentials must be provisioned locally after cloning.
 /application/config/database.php

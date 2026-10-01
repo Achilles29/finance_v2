@@ -7927,7 +7927,7 @@ class Pos_model extends CI_Model
         return $this->direct_print_targets_from_config_for_order_confirm($orderId, $snapshotId);
     }
 
-    public function render_mobile_print_document(string $eventCode, int $documentId, int $layoutId, int $paperWidth, int $charsPerLine, string $lineScope = 'ALL', int $productDivisionId = 0): array
+    public function render_mobile_print_document(string $eventCode, int $documentId, int $layoutId, int $paperWidth, int $charsPerLine, string $lineScope = 'ALL', int $productDivisionId = 0, int $operationalDivisionId = 0, string $printerRole = 'CUSTOM'): array
     {
         $documentTypes = [
             'ORDER_CONFIRM_KOT' => 'KITCHEN_TICKET',
@@ -7964,7 +7964,7 @@ class Pos_model extends CI_Model
         $printer = [
             'paper_width_mm' => $paperWidth,
             'chars_per_line' => $charsPerLine,
-            'printer_role' => $documentType === 'KITCHEN_TICKET' ? 'KITCHEN' : 'CASHIER',
+            'printer_role' => $printerRole,
         ];
         $text = '';
         if ($eventCode === 'ORDER_CONFIRM_KOT' || $eventCode === 'ORDER_PRE_BILL') {
@@ -7988,17 +7988,18 @@ class Pos_model extends CI_Model
                         }));
                     }
                 }
-                if ($productDivisionId > 0) {
+                if ($productDivisionId > 0 || $operationalDivisionId > 0) {
                     $lines = $this->configured_route_lines($lines, [
-                        'content_scope' => 'DIVISION',
+                        'content_scope' => 'MATCHED_DIVISION',
                         'product_division_id' => $productDivisionId,
+                        'operational_division_id' => $operationalDivisionId,
                     ]);
                 }
                 $printLines = array_map(function ($line) {
                     return $this->build_direct_print_order_line((array)$line);
                 }, $lines);
                 if (!$printLines) {
-                    if ($productDivisionId > 0) {
+                    if ($productDivisionId > 0 || $operationalDivisionId > 0) {
                         return ['ok' => true, 'skip' => true, 'layout_id' => (int)$layout['id'], 'document_type' => $documentType];
                     }
                     return ['ok' => false, 'message' => 'Item pesanan untuk dicetak tidak tersedia.'];

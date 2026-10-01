@@ -69,13 +69,13 @@ pmpb_check(
 pmpb_check(
     strpos($printers, "'outlet_id'] = \$outletId") !== false
         && strpos($printers, "'connection_outlet_id' => \$outletId") !== false
-        && strpos($printers, "'terminal_id' => (int)\$binding['terminal_id']") !== false,
-    'bearer list passes authoritative outlet and terminal filters to the model'
+        && strpos($printers, "'mobile_ready' => true") !== false,
+    'bearer list passes authoritative outlet and mobile route filters to the model'
 );
 pmpb_check(
     strpos($printers, "? 'ACTIVE'") !== false
-        && strpos($printers, "'runtime_ready' => true") !== false,
-    'bearer list only projects active runtime-ready printer configuration'
+        && strpos($printers, "'mobile_ready' => true") !== false,
+    'bearer list projects active Finance routes without requiring the web agent'
 );
 pmpb_check(
     strpos($printers, '$connectionOutlet !== $outletId') !== false,
@@ -302,8 +302,8 @@ pmpb_check(
         && ($printModel->lastConnectionFilters['status'] ?? '') === 'ACTIVE'
         && ($printModel->lastRouteFilters['connection_outlet_id'] ?? 0) === 71
         && ($printModel->lastRouteFilters['outlet_id'] ?? 0) === 71
-        && ($printModel->lastRouteFilters['terminal_id'] ?? 0) === 501
-        && !empty($printModel->lastRouteFilters['runtime_ready']),
+        && !isset($printModel->lastRouteFilters['terminal_id'])
+        && !empty($printModel->lastRouteFilters['mobile_ready']),
     'bearer list passes authoritative scoped filters to the fake printer model'
 );
 pmpb_check(
@@ -422,6 +422,54 @@ pmpb_check(
     $output->status === 403 && $printModel->readyCalls === 0 && $printModel->attemptCalls === 0,
     'web printer view permission alone cannot create a test-print attempt'
 );
+
+[$controller, $auth, $output, $model, $printModel] = pmpb_bearer_controller($cashierView, [
+    'event_code' => 'ORDER_CONFIRM_KOT',
+    'document_id' => 123,
+    'line_scope' => 'LATEST',
+]);
+$model->orderDraft = ['header' => ['outlet_id' => 71, 'terminal_id' => 612]];
+$model->businessResults['render_mobile_print_document'] = [
+    'ok' => true,
+    'text' => "TIKET\n",
+    'layout_id' => 51,
+    'document_type' => 'KITCHEN_TICKET',
+];
+$printModel->mobileRoutesResult = [[
+    'id' => 91,
+    'connection_id' => 81,
+    'connection_name' => 'BAR',
+    'location_label' => 'BAR',
+    'event_code' => 'ORDER_CONFIRM_KOT',
+    'layout_id' => 51,
+    'paper_width_mm' => 58,
+    'chars_per_line' => 32,
+    'copy_count' => 2,
+    'cut_mode' => 'PARTIAL',
+    'print_mode' => 'AUTO',
+    'content_scope' => 'MATCHED_DIVISION',
+    'product_division_id' => 4,
+]];
+$controller->mobile_print_documents();
+$mobilePrint = json_decode($output->body, true);
+pmpb_check(
+    $output->status === 200
+        && $printModel->lastMobileRoutesArguments === ['ORDER_CONFIRM_KOT', 71, 612]
+        && ($mobilePrint['direct_print_targets'][0]['printer_id'] ?? 0) === 81
+        && ($mobilePrint['direct_print_targets'][0]['layout_id'] ?? 0) === 51
+        && ($mobilePrint['direct_print_targets'][0]['copies'] ?? 0) === 2,
+    'mobile print uses Finance route and document terminal, without local routing payload'
+);
+
+[$controller, $auth, $output, $model, $printModel] = pmpb_bearer_controller($cashierView, [
+    'event_code' => 'ORDER_CONFIRM_KOT',
+    'document_id' => 123,
+    'line_scope' => 'LATEST',
+]);
+$model->orderDraft = ['header' => ['outlet_id' => 71, 'terminal_id' => 612]];
+$controller->mobile_print_documents();
+pmpb_check($output->status === 422 && $printModel->lastMobileRoutesArguments === ['ORDER_CONFIRM_KOT', 71, 612],
+    'mobile print fails clearly when Finance has no route for the document');
 
 if ($failures !== []) {
     fwrite(STDERR, count($failures) . ' POS mobile printer binding smoke check(s) failed.' . PHP_EOL);

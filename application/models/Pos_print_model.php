@@ -711,6 +711,10 @@ class Pos_print_model extends CI_Model
                 ->where('l.is_active', 1)
                 ->where('c.connection_type', 'LOCAL_AGENT')
                 ->where('c.python_port IS NOT NULL', null, false);
+        } elseif (!empty($filters['mobile_ready'])) {
+            $db->where('r.is_active', 1)
+                ->where('c.is_active', 1)
+                ->where('l.is_active', 1);
         }
         $total = (int)$db->count_all_results('', false);
         [$page, $offset, $pages] = $this->paginate($total, $page, $limit);
@@ -883,6 +887,32 @@ class Pos_print_model extends CI_Model
             $db->group_start()->where('r.terminal_id', $terminalId)->or_where('r.terminal_id IS NULL', null, false)->group_end();
         } else {
             $db->where('r.terminal_id IS NULL', null, false);
+        }
+        return $db
+            ->order_by('CASE WHEN r.outlet_id IS NULL THEN 0 ELSE 1 END', 'DESC', false)
+            ->order_by('CASE WHEN r.terminal_id IS NULL THEN 0 ELSE 1 END', 'DESC', false)
+            ->order_by('r.priority', 'ASC')
+            ->order_by('r.id', 'ASC')
+            ->get()
+            ->result_array();
+    }
+
+    public function mobile_routes(string $eventCode, int $outletId, int $terminalId): array
+    {
+        if (!$this->routes_enabled() || $outletId <= 0 || $terminalId <= 0 || !in_array($eventCode, self::EVENT_TYPES, true)) {
+            return [];
+        }
+        $db = $this->route_base_query()
+            ->select($this->route_select())
+            ->where('r.event_code', $eventCode)
+            ->where('r.is_active', 1)
+            ->where('c.is_active', 1)
+            ->where('c.outlet_id', $outletId)
+            ->where('l.is_active', 1)
+            ->group_start()->where('r.outlet_id', $outletId)->or_where('r.outlet_id IS NULL', null, false)->group_end()
+            ->group_start()->where('r.terminal_id', $terminalId)->or_where('r.terminal_id IS NULL', null, false)->group_end();
+        if ($this->route_print_mode_supported()) {
+            $db->where("COALESCE(r.print_mode, 'AUTO') != 'OFF'", null, false);
         }
         return $db
             ->order_by('CASE WHEN r.outlet_id IS NULL THEN 0 ELSE 1 END', 'DESC', false)

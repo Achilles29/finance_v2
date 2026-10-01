@@ -1272,8 +1272,7 @@ class Pos_mobile extends CI_Controller
                 $routeFilters += [
                     'connection_outlet_id' => $outletId,
                     'outlet_id' => $outletId,
-                    'terminal_id' => (int)$binding['terminal_id'],
-                    'runtime_ready' => true,
+                    'mobile_ready' => true,
                 ];
             }
             $routes = $this->Pos_print_model->route_rows($routeFilters);
@@ -1301,6 +1300,8 @@ class Pos_mobile extends CI_Controller
                         'layout_name' => (string)($route['layout_name'] ?? ''),
                         'print_mode' => (string)($route['print_mode'] ?? 'AUTO'),
                         'copy_count' => max(1, (int)($route['copy_count'] ?? 0) ?: (int)($route['default_copy_count'] ?? 1)),
+                        'terminal_id' => (int)($route['terminal_id'] ?? 0),
+                        'content_scope' => (string)($route['content_scope'] ?? 'ALL_ITEMS'),
                     ];
                 }
                 $rows[] = [
@@ -1372,16 +1373,21 @@ class Pos_mobile extends CI_Controller
         $eventCode = strtoupper(trim((string)($payload['event_code'] ?? '')));
         $documentId = max(0, (int)($payload['document_id'] ?? 0));
         $allowed = ['ORDER_CONFIRM_KOT', 'ORDER_PRE_BILL', 'ORDER_PAID_RECEIPT', 'SHIFT_CLOSE_SUMMARY', 'VOID_SLIP', 'REFUND_SLIP'];
-        $printers = $payload['printers'] ?? null;
-        if (!in_array($eventCode, $allowed, true) || $documentId <= 0 || !is_array($printers) || count($printers) < 1 || count($printers) > 10) {
+        $selectedPrinterId = max(0, (int)($payload['printer_id'] ?? 0));
+        if (!in_array($eventCode, $allowed, true) || $documentId <= 0) {
             $this->json_error('Permintaan cetak APK tidak valid.', 422);
             return;
         }
+        $routeTerminalId = (int)$this->mobileUser['terminal_id'];
         if (in_array($eventCode, ['ORDER_CONFIRM_KOT', 'ORDER_PRE_BILL'], true)) {
             if ($this->mobile_financial_order_context($documentId) === null) return;
+            $order = $this->Pos_model->find_order_draft($documentId);
+            $routeTerminalId = (int)($order['header']['terminal_id'] ?? $routeTerminalId);
         } elseif (in_array($eventCode, ['ORDER_PAID_RECEIPT', 'VOID_SLIP', 'REFUND_SLIP'], true)) {
             $type = $eventCode === 'ORDER_PAID_RECEIPT' ? 'PAYMENT' : ($eventCode === 'VOID_SLIP' ? 'VOID' : 'REFUND');
             if (!$this->require_mobile_print_document_outlet($type, $documentId)) return;
+            $context = $this->Pos_model->find_mobile_print_document_context($type, $documentId);
+            $routeTerminalId = (int)($context['terminal_id'] ?? $routeTerminalId);
         } else {
             $report = (array)$this->Pos_model->shift_close_report($documentId);
             $shift = (array)($report['shift'] ?? []);
@@ -1393,6 +1399,10 @@ class Pos_mobile extends CI_Controller
                 $this->json_error('Laporan kasir tidak ditemukan.', 404);
                 return;
             }
+            $routeTerminalId = (int)($shift['terminal_id'] ?? $routeTerminalId);
+        }
+        if ($routeTerminalId <= 0) {
+            $routeTerminalId = (int)$this->mobileUser['terminal_id'];
         }
         $lineScope = strtoupper(trim((string)($payload['line_scope'] ?? 'ALL')));
         if (!in_array($lineScope, ['ALL', 'LATEST'], true)) {
@@ -1409,27 +1419,40 @@ class Pos_mobile extends CI_Controller
             }
             if (!$this->consume_mobile_order_reversal_step_up('ORDER_REPRINT', $documentId, $payload)) return;
         }
+        $routes = $this->Pos_print_model->mobile_routes(
+            $eventCode,
+            (int)$this->mobileUser['outlet_id'],
+            $routeTerminalId
+        );
+        if (!$routes) {
+            $this->json_error('Belum ada aturan cetak Finance untuk dokumen dan outlet ini.', 422);
+            return;
+        }
+        if ($selectedPrinterId > 0) {
+            $routes = array_values(array_filter($routes, static function (array $route) use ($selectedPrinterId): bool {
+                return (int)($route['connection_id'] ?? 0) === $selectedPrinterId;
+            }));
+            if (!$routes) {
+                $this->json_error('Tujuan printer Finance tidak ditemukan.', 404);
+                return;
+            }
+        }
         $targets = [];
-        foreach ($printers as $printer) {
-            if (!is_array($printer)) {
-                $this->json_error('Pengaturan printer APK tidak valid.', 422);
-                return;
+        foreach ($routes as $route) {
+            if (!$needsReprintProof && strtoupper((string)($route['print_mode'] ?? 'AUTO')) !== 'AUTO') {
+                continue;
             }
-            $localId = (int)($printer['local_printer_id'] ?? 0);
-            $paperWidth = (int)($printer['paper_width_mm'] ?? 0);
-            $chars = (int)($printer['chars_per_line'] ?? 0);
-            if ($localId === 0 || !in_array($paperWidth, [58, 80], true) || $chars < 24 || $chars > 64) {
-                $this->json_error('Pengaturan printer APK tidak valid.', 422);
-                return;
-            }
+            $matchedDivision = strtoupper((string)($route['content_scope'] ?? 'ALL_ITEMS')) === 'MATCHED_DIVISION';
             $rendered = $this->Pos_model->render_mobile_print_document(
                 $eventCode,
                 $documentId,
-                max(0, (int)($printer['layout_id'] ?? 0)),
-                $paperWidth,
-                $chars,
+                (int)($route['layout_id'] ?? 0),
+                (int)($route['paper_width_mm'] ?? 80),
+                (int)($route['chars_per_line'] ?? 48),
                 $lineScope,
-                max(0, (int)($printer['product_division_id'] ?? 0))
+                $matchedDivision ? (int)($route['product_division_id'] ?? 0) : 0,
+                $matchedDivision ? (int)($route['operational_division_id'] ?? 0) : 0,
+                (string)($route['location_label'] ?? 'CUSTOM')
             );
             if (empty($rendered['ok'])) {
                 $this->json_error((string)($rendered['message'] ?? 'Dokumen belum dapat dicetak.'), 422);
@@ -1439,15 +1462,20 @@ class Pos_mobile extends CI_Controller
                 continue;
             }
             $targets[] = [
-                'printer_id' => $localId,
-                'printer_name' => trim((string)($printer['name'] ?? 'Printer APK')),
+                'printer_id' => (int)$route['connection_id'],
+                'printer_name' => (string)($route['connection_name'] ?? 'Printer Finance'),
+                'printer_role' => (string)($route['location_label'] ?? 'CUSTOM'),
+                'server_source' => 'FINANCE_ROUTE',
+                'route_id' => (int)($route['id'] ?? 0),
                 'event_code' => $eventCode,
                 'document_type' => (string)$rendered['document_type'],
                 'layout_id' => (int)$rendered['layout_id'],
                 'text' => (string)$rendered['text'],
-                'copies' => max(1, min(10, (int)($printer['copies'] ?? 1))),
-                'cut_mode' => (string)($printer['cut_mode'] ?? 'PARTIAL'),
-                'open_drawer' => !empty($printer['open_drawer']) ? 1 : 0,
+                'paper_width_mm' => (int)($route['paper_width_mm'] ?? 80),
+                'chars_per_line' => (int)($route['chars_per_line'] ?? 48),
+                'copies' => max(1, min(10, (int)($route['copy_count'] ?? 0) ?: (int)($route['default_copy_count'] ?? 1))),
+                'cut_mode' => (string)($route['cut_mode'] ?? 'PARTIAL'),
+                'open_drawer' => !empty($route['open_drawer']) ? 1 : 0,
             ];
         }
         $this->json_ok([

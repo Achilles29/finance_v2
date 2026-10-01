@@ -202,7 +202,10 @@ $check(
         && strpos($source['view'], 'pages[Math.floor(i/Math.max(1,cap.total))].appendChild(slot)') !== false
         && strpos($source['view'], 'print-sheet-page.is-last') !== false
         && strpos($source['view'], "state.print.paper+' '+(state.print.orientation==='landscape'?'landscape':'portrait')") !== false
-        && strpos($source['view'], '@page{size:A4 portrait') === false,
+        && strpos($source['view'], '@page{size:A4 portrait') === false
+        && strpos($source['view'], 'stroke-dasharray:3 8') === false
+        && strpos($source['view'], "querySelectorAll('.is-selected').forEach(node=>node.classList.remove('is-selected'))") !== false
+        && strpos($source['view'], "querySelectorAll('.free-resize-handle,.free-control-handle,#freeDragReadout').forEach(node=>node.remove())") !== false,
     'editor exposes direct element visibility, drag handling, and shared print-sheet rendering'
 );
 $check(

@@ -273,7 +273,7 @@ linear-gradient(135deg,rgba(255,255,255,.05),transparent 38%,rgba(86,29,33,.10) 
 .label-mountain-art .mountain-orb-inner{fill:none;stroke:rgba(255,220,166,.2);stroke-width:1}
 .label-mountain-art .mountain-line{fill:none;stroke:rgba(255,228,188,.74);stroke-width:2;vector-effect:non-scaling-stroke}
 .label-mountain-art .mountain-line-back{opacity:.43;stroke-width:1.3}
-.label-mountain-art .mountain-horizon{fill:none;stroke:rgba(255,191,126,.5);stroke-width:1;stroke-dasharray:3 8;vector-effect:non-scaling-stroke}
+.label-mountain-art .mountain-horizon{fill:none;stroke:rgba(255,191,126,.5);stroke-width:1;vector-effect:non-scaling-stroke}
 #customElementsLayer{position:absolute;inset:0;z-index:20;pointer-events:none}
 .free-canvas-element{position:absolute;display:flex;align-items:center;box-sizing:border-box;touch-action:none;user-select:none;cursor:move;transform-origin:center center;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.08;pointer-events:auto}
 .free-canvas-element.is-selected{outline:1px dashed rgba(255,209,112,.95);outline-offset:2px}
@@ -1754,6 +1754,8 @@ async function buildPrintSheet(){
     cloneCanvas.removeAttribute('id');
     cloneCanvas.querySelectorAll('[id]').forEach(node=>node.removeAttribute('id'));
     cloneCanvas.querySelectorAll('.active').forEach(node=>node.classList.remove('active'));
+    cloneCanvas.querySelectorAll('.is-selected').forEach(node=>node.classList.remove('is-selected'));
+    cloneCanvas.querySelectorAll('.free-resize-handle,.free-control-handle,#freeDragReadout').forEach(node=>node.remove());
     cloneCanvas.querySelectorAll('.drag-guides').forEach(node=>node.remove());
     cloneCanvas.style.setProperty('--label-preview-w',designW+'px');
     cloneCanvas.style.setProperty('--label-preview-h',designH+'px');

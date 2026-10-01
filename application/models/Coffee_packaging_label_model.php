@@ -5,6 +5,7 @@ class Coffee_packaging_label_model extends CI_Model
 {
     private const TABLE = 'coffee_packaging_label';
     private const TEMPLATE_TABLE = 'coffee_packaging_label_template';
+    private const ELEMENT_TABLE = 'coffee_packaging_label_element';
 
     public function table_ready(): bool
     {
@@ -14,6 +15,28 @@ class Coffee_packaging_label_model extends CI_Model
     public function template_table_ready(): bool
     {
         return $this->db->table_exists(self::TEMPLATE_TABLE);
+    }
+
+    public function list_design_elements(): array
+    {
+        if (!$this->db->table_exists(self::ELEMENT_TABLE)) {
+            return [];
+        }
+
+        $rows = $this->db->from(self::ELEMENT_TABLE)
+            ->where('is_active', 1)
+            ->order_by('category', 'ASC')
+            ->order_by('element_name', 'ASC')
+            ->get()->result_array();
+
+        foreach ($rows as &$row) {
+            $definition = json_decode((string)($row['element_json'] ?? ''), true);
+            $row['definition'] = is_array($definition) ? $definition : [];
+            unset($row['element_json']);
+        }
+        unset($row);
+
+        return $rows;
     }
 
     /**
@@ -376,9 +399,9 @@ class Coffee_packaging_label_model extends CI_Model
             [
                 'id' => 0,
                 'template_key' => 'classic-portrait',
-                'template_name' => 'Classic Portrait',
-                'description' => 'Template awal model 1: label tegak 90 x 140 mm.',
-                'design_json' => '{"schema":"roastery-label-template-v1","canvas":{"width":90,"height":140,"theme":"heritage-cream","artworkMode":"full","artworkFit":"stretch","patternMode":"contour"},"print":{"paper":"A4","orientation":"portrait","paperW":210,"paperH":297,"perSheet":4,"margin":6,"gap":3,"cutLine":true}}',
+                'template_name' => 'Blank Canvas',
+                'description' => 'Kanvas kosong 90 x 140 mm. Tambahkan elemen sesuai kebutuhan.',
+                'design_json' => '{"schema":"roastery-label-template-v1","canvas":{"width":90,"height":140,"theme":"heritage-cream","artworkMode":"full","artworkFit":"stretch","patternMode":"none","blankCanvas":true},"print":{"paper":"A4","orientation":"portrait","paperW":210,"paperH":297,"perSheet":4,"margin":6,"gap":3,"cutLine":true},"elements":[],"blocks":{}}',
                 'is_system' => 1,
                 'is_active' => 1,
             ],

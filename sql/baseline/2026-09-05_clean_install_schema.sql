@@ -1020,6 +1020,23 @@ CREATE TABLE `coffee_packaging_label_template` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `coffee_packaging_label_element` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `element_key` varchar(80) NOT NULL,
+  `element_name` varchar(120) NOT NULL,
+  `category` varchar(32) NOT NULL,
+  `element_json` mediumtext NOT NULL,
+  `is_system` tinyint(1) NOT NULL DEFAULT 1,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_coffee_packaging_label_element_key` (`element_key`) USING BTREE,
+  KEY `idx_coffee_packaging_label_element_active` (`is_active`,`category`,`element_name`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Reusable canvas elements for Roastery Label Studio';
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cost_recalc_queue` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `product_id` bigint(20) unsigned NOT NULL,

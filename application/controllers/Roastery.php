@@ -64,18 +64,20 @@ class Roastery extends MY_Controller
             : ($this->normalize_label_template($requestedTemplateRaw) === self::LABEL_TEMPLATE_UNIVERSAL
                 ? 'retail-wide'
                 : 'classic-portrait');
+        $selectedTemplateId = $requestedTemplateId > 0 ? $requestedTemplateId : $storedTemplateId;
+        $selectedTemplateKey = $requestedTemplateKey !== '' ? $requestedTemplateKey : $storedTemplateKey;
         $selectedTemplate = $this->select_label_template(
             $templates,
-            $requestedTemplateId > 0 ? $requestedTemplateId : $storedTemplateId,
-            $requestedTemplateKey !== '' ? $requestedTemplateKey : $storedTemplateKey
+            $selectedTemplateId,
+            $selectedTemplateId > 0 ? '' : $selectedTemplateKey
         );
         if (!$selectedTemplate && !empty($templates)) {
             $selectedTemplate = $templates[0];
         }
         $applyTemplate = $formMode && ($requestedTemplateId > 0 || $requestedTemplateRaw !== '');
-        $editorDesignJson = $applyTemplate && !empty($selectedTemplate['design_json'])
+        $editorDesignJson = ($applyTemplate || $newMode) && !empty($selectedTemplate['design_json'])
             ? (string)$selectedTemplate['design_json']
-            : (string)($editRow['design_json'] ?? ($selectedTemplate['design_json'] ?? '{}'));
+            : (string)($editRow['design_json'] ?? '{}');
 
         $this->render('roastery/coffee_packaging_label_index', [
             'page_title' => 'Label Packaging Kopi',
@@ -85,6 +87,7 @@ class Roastery extends MY_Controller
             'product_options' => $this->Coffee_packaging_label_model->roastery_product_options(),
             'artwork_gallery' => $this->image_gallery('uploads/coffee-labels', $this->Coffee_packaging_label_model->image_usage_map()),
             'logo_gallery' => $this->image_gallery('uploads/coffee-labels/logos', [], ['png', 'svg']),
+            'element_library' => $this->Coffee_packaging_label_model->list_design_elements(),
             'edit_row' => $editRow,
             'form_mode' => $newMode || $editId > 0,
             'label_templates' => $templates,
@@ -427,6 +430,7 @@ class Roastery extends MY_Controller
             'product_options' => $this->Coffee_packaging_label_model->roastery_product_options(),
             'artwork_gallery' => $this->image_gallery('uploads/coffee-labels', $this->Coffee_packaging_label_model->image_usage_map()),
             'logo_gallery' => $this->image_gallery('uploads/coffee-labels/logos', [], ['png', 'svg']),
+            'element_library' => $this->Coffee_packaging_label_model->list_design_elements(),
             'edit_row' => $row,
             'form_mode' => true,
             'label_templates' => $templates,
@@ -614,13 +618,17 @@ class Roastery extends MY_Controller
             return '{}';
         }
 
+        if (isset($decoded['elements'])) {
+            $decoded['elements'] = $this->sanitize_canvas_elements($decoded['elements']);
+        }
+
         return json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
     private function sanitize_template_design_json(string $json): string
     {
         $json = trim($json);
-        if ($json === '' || strlen($json) > 120000) {
+        if ($json === '' || strlen($json) > 240000) {
             return '{}';
         }
 
@@ -651,8 +659,81 @@ class Roastery extends MY_Controller
                 $design[$key] = array_values(array_slice($decoded[$key], 0, 12));
             }
         }
+        if (isset($decoded['elements'])) {
+            $design['elements'] = $this->sanitize_canvas_elements($decoded['elements']);
+        }
 
         return json_encode($design, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    private function sanitize_canvas_elements($elements): array
+    {
+        if (!is_array($elements)) {
+            return [];
+        }
+
+        $allowedTypes = ['text', 'mountain', 'circle', 'line', 'rect'];
+        $allowedFields = ['coffee_name', 'origin', 'process_method', 'roast_level', 'weight_text', 'tasting_notes', 'brew_suggestion', 'batch_no', 'roast_date', 'expiry_date', 'elevation_text', 'footer_note'];
+        $allowedFonts = ['Jost', 'Space Grotesk', 'Cormorant Garamond', 'Fraunces', 'Playfair Display', 'Libre Baskerville', 'Bebas Neue'];
+        $clean = [];
+
+        foreach (array_slice($elements, 0, 100) as $element) {
+            if (!is_array($element) || !in_array($element['type'] ?? '', $allowedTypes, true)) {
+                continue;
+            }
+            $id = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($element['id'] ?? ''));
+            if ($id === '') {
+                continue;
+            }
+            $item = [
+                'id' => substr($id, 0, 48),
+                'type' => $element['type'],
+                'name' => mb_substr(trim(strip_tags((string)($element['name'] ?? 'Elemen'))), 0, 80),
+                'x' => $this->bounded_element_number($element['x'] ?? 10, -20, 120, 10),
+                'y' => $this->bounded_element_number($element['y'] ?? 10, -20, 120, 10),
+                'w' => $this->bounded_element_number($element['w'] ?? 30, 1, 160, 30),
+                'h' => $this->bounded_element_number($element['h'] ?? 12, 1, 160, 12),
+                'rotation' => $this->bounded_element_number($element['rotation'] ?? 0, -360, 360, 0),
+                'z' => $this->bounded_element_number($element['z'] ?? 20, 1, 100, 20),
+                'opacity' => $this->bounded_element_number($element['opacity'] ?? 1, 0, 1, 1),
+                'color' => $this->safe_element_color($element['color'] ?? '#fff3df', '#fff3df'),
+                'fill' => $this->safe_element_color($element['fill'] ?? 'transparent', 'transparent'),
+                'stroke' => $this->safe_element_color($element['stroke'] ?? '#fff3df', '#fff3df'),
+                'strokeWidth' => $this->bounded_element_number($element['strokeWidth'] ?? 1, 0, 20, 1),
+                'soft' => !empty($element['soft']),
+                'size' => $this->bounded_element_number($element['size'] ?? 18, 1, 128, 18),
+                'fontWeight' => $this->bounded_element_number($element['fontWeight'] ?? (!empty($element['bold']) ? 800 : 500), 100, 900, 500),
+                'curve' => $this->bounded_element_number($element['curve'] ?? 0, -100, 100, 0),
+                'font' => in_array($element['font'] ?? '', $allowedFonts, true) ? $element['font'] : 'Jost',
+                'align' => in_array($element['align'] ?? '', ['left', 'center', 'right'], true) ? $element['align'] : 'left',
+                'bold' => !empty($element['bold']),
+                'italic' => !empty($element['italic']),
+                'text' => mb_substr(trim((string)($element['text'] ?? '')), 0, 1000),
+                'field' => in_array($element['field'] ?? '', $allowedFields, true) ? $element['field'] : '',
+            ];
+            $pathKey = (string)($element['pathKey'] ?? 'ridge');
+            if ($item['type'] === 'mountain') {
+                $item['pathKey'] = in_array($pathKey, ['ridge', 'contours', 'double-ridge'], true) ? $pathKey : 'ridge';
+            }
+            $clean[] = $item;
+        }
+
+        return $clean;
+    }
+
+    private function bounded_element_number($value, float $min, float $max, float $fallback): float
+    {
+        if (!is_numeric($value)) {
+            return $fallback;
+        }
+        return round(max($min, min($max, (float)$value)), 3);
+    }
+
+    private function safe_element_color($value, string $fallback): string
+    {
+        $value = strtolower(trim((string)$value));
+        return $value === 'transparent' || preg_match('/^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i', $value)
+            ? $value : $fallback;
     }
 
     private function image_gallery(string $relativeDir, array $usageMap = [], array $extensions = ['png']): array

@@ -24,7 +24,10 @@
     "sql/2026-09-03a_auth_login_throttle_foundation.sql",
     "sql/2026-09-03b_auth_session_log_login_at_microsecond_compatibility.sql",
     "sql/2026-09-04a_a3_navigation_registry_canonicalization.sql",
-    "sql/2026-09-04b_a3_page_alias_registry.sql"
+    "sql/2026-09-04b_a3_page_alias_registry.sql",
+    "sql/2026-09-23a_add_logged_out_wa_session_status.sql",
+    "sql/2026-09-23b_module_notification_pdf_attachment.sql",
+    "sql/2026-09-23c_division_request_line_review.sql"
   ],
   "migrations": [
     {
@@ -367,6 +370,42 @@
       "path": "sql/2026-10-01a_monthly_reporting_workspace.sql",
       "sha256": "90f077e995e2e2a00dc773b24f7c1ccb2ed6c44481c6b251b6687763ac26d02f",
       "dependencies": ["2026-09-15a-finance-general-ledger", "2026-09-06i-a3-sidebar-task-oriented-layout"],
+      "classification": "seed",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-10-01b-roastery-label-element-library",
+      "order": 2026100102,
+      "path": "sql/2026-10-01b_roastery_label_element_library.sql",
+      "sha256": "6b6db05953c485f4910775ac3db947e20b6c6e1086f791c8590fb648d971d881",
+      "dependencies": ["2026-09-06h-roastery-label-template-studio"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-10-01c-roastery-blank-default-template",
+      "order": 2026100103,
+      "path": "sql/2026-10-01c_roastery_blank_default_template.sql",
+      "sha256": "14ef701715f72dbf8416565d7ef89b94c506b39eea5f5f49498c22f6a828b08d",
+      "dependencies": ["2026-09-06h-roastery-label-template-studio"],
+      "classification": "seed",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-10-01d-roastery-soft-circle-element",
+      "order": 2026100104,
+      "path": "sql/2026-10-01d_roastery_soft_circle_element.sql",
+      "sha256": "e8743afd81e32191974dfefe9a96fc67116509862a96b7b620ed647a53cd0afd",
+      "dependencies": ["2026-10-01b-roastery-label-element-library"],
+      "classification": "seed",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-10-01e-roastery-dynamic-text-defaults",
+      "order": 2026100105,
+      "path": "sql/2026-10-01e_roastery_dynamic_text_defaults.sql",
+      "sha256": "82852e99b1c512d9bbd435de5daf6a6be541b8fd0f988ba59315408e4483c9c0",
+      "dependencies": ["2026-10-01b-roastery-label-element-library"],
       "classification": "seed",
       "policies": ["clean_install", "upgrade"]
     }

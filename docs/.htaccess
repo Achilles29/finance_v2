@@ -1,0 +1,3 @@
+<FilesMatch "(?i)^GOWESDAY.*\.xlsx$">
+    Require all denied
+</FilesMatch>

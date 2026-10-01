@@ -1,0 +1,546 @@
+/* ============================================================
+   NAMUA Menu Book — Stylesheet
+   Stack : plain HTML + CSS, zero external CDN, print-first
+   Fonts : Georgia (system serif) + Arial (system sans-serif)
+   ============================================================ */
+
+@page {
+    size: A4 portrait;
+    margin: 0;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: #1a0e08;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #2a211d;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BASE PAGE SHELL
+   ═══════════════════════════════════════════════════════════ */
+
+.menu-page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+    background: #F8F1E8;
+    padding: 12mm 13mm 11mm;
+}
+
+/* ───── Header ───────────────────────────────────────────── */
+.menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 10mm;
+    margin-bottom: 3mm;
+}
+
+.menu-logo {
+    height: 8mm;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,.25));
+}
+
+.page-number {
+    font-family: Arial, sans-serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: #C9A86A;
+    font-weight: 700;
+}
+
+/* ───── Page Title Block ─────────────────────────────────── */
+.page-title {
+    text-align: center;
+    margin-bottom: 4mm;
+}
+
+.label-category {
+    display: block;
+    font-family: Arial, sans-serif;
+    font-size: 7px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #9a7a48;
+    margin-bottom: 2mm;
+}
+
+.page-title h1 {
+    font-family: Georgia, serif;
+    font-size: 30px;
+    letter-spacing: 2.5px;
+    color: #7D1F1F;
+    line-height: 1;
+}
+
+.page-title h2 {
+    margin-top: 1.5mm;
+    font-size: 11px;
+    font-weight: 400;
+    font-style: italic;
+    color: #6A4E3A;
+    letter-spacing: .5px;
+}
+
+/* Gold ornament divider */
+.title-ornament {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3mm;
+    margin: 2mm auto 0;
+    width: 64mm;
+}
+
+.title-ornament::before,
+.title-ornament::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+}
+
+.title-ornament::before {
+    background: linear-gradient(to right, transparent, #C9A86A);
+}
+
+.title-ornament::after {
+    background: linear-gradient(to left, transparent, #C9A86A);
+}
+
+.title-ornament span {
+    color: #C9A86A;
+    font-size: 9px;
+    line-height: 1;
+}
+
+/* ───── Footer ───────────────────────────────────────────── */
+.menu-footer {
+    position: absolute;
+    left: 13mm;
+    right: 13mm;
+    bottom: 8mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: Arial, sans-serif;
+    font-size: 7px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #9a7a48;
+    border-top: 1px solid rgba(154, 122, 72, .28);
+    padding-top: 2.5mm;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PAGE 02 — MAIN CHARACTER
+   ═══════════════════════════════════════════════════════════ */
+
+.page-main-character {
+    background:
+        linear-gradient(
+            to bottom,
+            rgba(8, 2, 0, .60) 0%,
+            rgba(8, 2, 0, .10) 30%,
+            rgba(8, 2, 0, .14) 60%,
+            rgba(8, 2, 0, .52) 100%
+        ),
+        url('/finance/assets/menu-book/backgrounds/bg-main-character.png') center / cover no-repeat;
+}
+
+/* ── 3-column header: logo | title | page-number ─────────── */
+.page-main-character .menu-header {
+    display: grid;
+    grid-template-columns: 32mm 1fr 18mm;
+    align-items: center;
+    height: auto;
+    padding: 7mm 0 6mm;
+    margin-bottom: 3mm;
+    border-bottom: 1px solid rgba(201, 168, 106, .30);
+}
+
+.page-main-character .menu-logo {
+    height: 28mm;
+    filter: brightness(1.15) saturate(1.1) drop-shadow(0 2px 8px rgba(0,0,0,.40));
+}
+
+.header-logo-area {
+    display: flex;
+    align-items: center;
+}
+
+.header-title-area {
+    text-align: center;
+    padding: 0 2mm;
+}
+
+.header-page-area {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+    padding-top: 1mm;
+}
+
+/* Category label dengan flanking rules */
+.page-main-character .label-category {
+    color: #D4B278;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3mm;
+    letter-spacing: 3px;
+    margin-bottom: 2mm;
+    text-shadow: 0 1px 4px rgba(0,0,0,.85), 0 2px 10px rgba(0,0,0,.60);
+}
+
+.page-main-character .label-category::before,
+.page-main-character .label-category::after {
+    content: '';
+    width: 10mm;
+    height: 1px;
+    background: rgba(212, 178, 120, .55);
+    flex-shrink: 0;
+}
+
+/* Two-line dramatic title */
+.page-main-character .header-title-area h1 {
+    font-size: 0;
+    margin: 0;
+    line-height: 1;
+}
+
+.h1-sub {
+    display: block;
+    font-family: Georgia, serif;
+    font-size: 20px;
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: 14px;
+    color: #D4B278;
+    margin-bottom: 1.5mm;
+    text-transform: uppercase;
+    text-shadow:
+        0 1px 3px rgba(0,0,0,.85),
+        0 3px 12px rgba(0,0,0,.55);
+}
+
+.h1-main {
+    display: block;
+    font-family: Georgia, serif;
+    font-size: 48px;
+    font-weight: 700;
+    letter-spacing: 7px;
+    color: #fff;
+    text-shadow:
+        0 1px 2px rgba(0,0,0,1),
+        0 3px 12px rgba(0,0,0,.90),
+        0 8px 32px rgba(0,0,0,.65);
+    line-height: 1;
+}
+
+/* 3-diamond ornament */
+.page-main-character .title-ornament {
+    width: 90mm;
+    gap: 1.5mm;
+    margin: 2.5mm auto 1.5mm;
+}
+
+.page-main-character .header-title-area h2 {
+    font-size: 11px;
+    font-weight: 400;
+    font-style: italic;
+    margin-top: 0;
+    color: rgba(255, 255, 255, .78);
+    letter-spacing: 2px;
+    text-shadow:
+        0 1px 3px rgba(0,0,0,.90),
+        0 3px 10px rgba(0,0,0,.65);
+}
+
+.page-main-character .menu-footer {
+    color: rgba(255, 255, 255, .75);
+    border-top-color: rgba(201, 168, 106, .38);
+}
+
+/* ── Signature showcase grid ─────────────────────────────── */
+.signature-showcase {
+    display: grid;
+    grid-template-rows: 60mm 68mm 78mm;
+    gap: 3mm;
+}
+
+/* Card base */
+.signature-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+    background: #120702;
+    border: 1px solid rgba(201, 168, 106, .40);
+    box-shadow:
+        0 6px 22px rgba(0, 0, 0, .55),
+        inset 0 1px 0 rgba(201, 168, 106, .12),
+        inset 0 0 0 1px rgba(255, 255, 255, .03);
+}
+
+.signature-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Middle 2×2 grid */
+.signature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 3mm;
+}
+
+/* ── Info overlay — base (hero & bottom) ─────────────────── */
+.signature-info {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 18mm 5mm 4mm;
+    background: linear-gradient(
+        to top,
+        rgba(6, 2, 0, .96) 0%,
+        rgba(6, 2, 0, .88) 30%,
+        rgba(6, 2, 0, .50) 55%,
+        rgba(6, 2, 0, .10) 75%,
+        rgba(6, 2, 0, 0) 100%
+    );
+}
+
+/* Gold accent hairline di atas info overlay */
+.signature-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 8%;
+    right: 8%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(201, 168, 106, .55), transparent);
+    pointer-events: none;
+}
+
+.hero-signature .signature-info,
+.bottom-signature .signature-info {
+    padding: 22mm 6mm 5mm;
+}
+
+.signature-info h3 {
+    margin: 1.5mm 0 1.2mm;
+    font-family: Georgia, serif;
+    font-size: 11px;
+    line-height: 1.1;
+    letter-spacing: .5px;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,.65), 0 2px 8px rgba(0,0,0,.40);
+}
+
+.hero-signature .signature-info h3 {
+    font-size: 21px;
+    letter-spacing: 1.8px;
+    margin: 2mm 0 1.5mm;
+    text-shadow: 0 2px 6px rgba(0,0,0,.70), 0 4px 16px rgba(0,0,0,.45);
+}
+
+.bottom-signature .signature-info h3 {
+    font-size: 18px;
+    letter-spacing: 1.8px;
+    margin: 2mm 0 1.5mm;
+    text-shadow: 0 2px 6px rgba(0,0,0,.70), 0 4px 16px rgba(0,0,0,.45);
+}
+
+.signature-info p {
+    font-family: Arial, sans-serif;
+    font-size: 8px;
+    line-height: 1.5;
+    color: rgba(224, 196, 142, .88);
+    font-style: italic;
+    max-width: 92%;
+    margin-bottom: .5mm;
+}
+
+.hero-signature .signature-info p,
+.bottom-signature .signature-info p {
+    font-size: 8.5px;
+}
+
+/* ── Grid card overlay — compact, fast-fade ──────────────── */
+.signature-grid .signature-info {
+    padding: 3mm 4mm 3mm;
+    background: linear-gradient(
+        to top,
+        rgba(6, 2, 0, .96) 0%,
+        rgba(6, 2, 0, .92) 30%,
+        rgba(6, 2, 0, .45) 55%,
+        rgba(6, 2, 0, .06) 72%,
+        rgba(6, 2, 0, 0) 100%
+    );
+}
+
+/* Grid card: no gold hairline (too short for it to matter) */
+.signature-grid .signature-info::before {
+    display: none;
+}
+
+/* Grid card font sizes */
+.signature-grid .signature-info h3 {
+    font-size: 10px;
+    margin: 1mm 0 .8mm;
+    letter-spacing: .8px;
+}
+
+.signature-grid .signature-info p {
+    display: none;
+}
+
+.signature-grid .mini-price-row {
+    font-size: 6px;
+    padding: .6mm 0;
+    margin-top: .4mm;
+}
+
+.signature-grid .mini-price-row b {
+    font-size: 10px;
+}
+
+.signature-grid .price-group-label {
+    font-size: 6.5px;
+    margin-bottom: .6mm;
+}
+
+/* ── Hero: geser sedikit ke bawah agar piring terpusat ───── */
+.hero-signature img {
+    object-position: center 38%;
+}
+
+/* ── Bottom signature: cover dengan fokus atas ───────────── */
+.bottom-signature img {
+    object-fit: cover;
+    object-position: center 22%;
+}
+
+.signature-price {
+    margin-top: 2.5mm;
+    font-family: Arial, sans-serif;
+    font-size: 26px;
+    font-weight: 900;
+    color: #D4B278;
+    line-height: 1;
+    letter-spacing: 1.5px;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, .4);
+}
+
+/* ── Badges ──────────────────────────────────────────────── */
+.premium-badge {
+    display: inline-block;
+    padding: 2.5px 8px;
+    background: #C9A86A;
+    color: #1c0a00;
+    font-family: Arial, sans-serif;
+    font-size: 6.5px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border-radius: 2px;
+}
+
+.premium-badge.dark {
+    background: #7D1F1F;
+    color: #F8E8CC;
+    letter-spacing: 1.2px;
+}
+
+/* ── Mini price rows ─────────────────────────────────────── */
+.mini-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 44mm;
+    padding: .9mm 0;
+    border-top: 1px solid rgba(201, 168, 106, .22);
+    font-family: Arial, sans-serif;
+    font-size: 6.5px;
+    letter-spacing: .5px;
+    color: rgba(255, 255, 255, .88);
+    margin-top: .6mm;
+}
+
+.mini-price-row b {
+    color: #D4B278;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+/* ── Price group: side-by-side variant columns ───────────── */
+.price-group-row {
+    display: flex;
+    gap: 0;
+    margin-top: 1.5mm;
+    align-items: flex-start;
+}
+
+.price-group {
+    flex: 1;
+}
+
+.price-group:first-child {
+    padding-right: 2.5mm;
+}
+
+.price-group:last-child {
+    padding-left: 2.5mm;
+    border-left: 1px solid rgba(201, 168, 106, .20);
+}
+
+.price-group-label {
+    font-family: Arial, sans-serif;
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #D4B278;
+    margin-bottom: 1mm;
+}
+
+.price-group-label em {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    color: rgba(212, 178, 120, .85);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 6.5px;
+}
+
+.price-group .mini-price-row {
+    max-width: none;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PRINT
+   ═══════════════════════════════════════════════════════════ */
+
+@media print {
+    body { background: transparent; }
+
+    .menu-page {
+        margin: 0;
+        page-break-after: always;
+    }
+}

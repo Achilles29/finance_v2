@@ -1,0 +1,24 @@
+{
+  "schema": "finance.a4-static-toolchain",
+  "schema_version": 1,
+  "runtime": {
+    "environment": "A4_STATIC_RUNTIME_DIR",
+    "default_directory": "/var/lib/finance-a4-static",
+    "vendor_relative_path": "vendor"
+  },
+  "phpstan": {
+    "package": "phpstan/phpstan",
+    "version": "1.12.27",
+    "reference": "3a6e423c076ab39dfedc307e2ac627ef579db162",
+    "binary_relative_path": "vendor/bin/phpstan"
+  },
+  "analysis": {
+    "config_relative_path": "tools/static/phpstan.neon",
+    "baseline_relative_path": "tools/static/phpstan-baseline.neon",
+    "scope_relative_path": "application",
+    "baseline_error_count": 0,
+    "maximum_baseline_errors": 0,
+    "timeout_seconds": 360,
+    "maximum_captured_bytes": 262144
+  }
+}

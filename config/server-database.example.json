@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "scope": "database_only",
+  "database": {
+    "host": "127.0.0.1",
+    "port": 3306,
+    "socket": "",
+    "name": "REPLACE_DATABASE_NAME",
+    "user": "REPLACE_DATABASE_USER",
+    "password": "REPLACE_DATABASE_PASSWORD"
+  }
+}

@@ -1,0 +1,10 @@
+/var/log/finance/*.log /var/lib/finance-backup/logs/*.log {
+    daily
+    rotate 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    su root root
+}

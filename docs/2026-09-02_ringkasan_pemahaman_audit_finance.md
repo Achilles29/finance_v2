@@ -1,0 +1,24 @@
+# Ringkasan Pemahaman Audit Finance
+
+- Finance adalah aplikasi monolith CodeIgniter 3 dengan service tambahan untuk WhatsApp dan printer lokal.
+- Modul utama mencakup auth/RBAC, master data, purchase, inventory, produksi, POS, online order/member, finance, attendance, payroll, asset, dan operasional.
+- Struktur stok sudah memiliki konsep `item_id`, bridge `material_id`, ledger, FIFO/lot, deficit, reversal, dan period guard.
+- Sebagian runtime dan laporan masih belum sepenuhnya memakai satu sumber kebenaran stok.
+- PHP lint berhasil: 444 file, tanpa syntax error.
+- Inventory period guard smoke test berhasil: 9/9.
+- Snapshot database live menunjukkan tidak ada lot negatif dan tidak ada deficit berstatus `OPEN`.
+- Temuan paling kritis adalah permission writer generic pada Master dan Master Relation yang belum deny-by-default.
+- POS mobile memvalidasi token/API key, tetapi belum konsisten memvalidasi permission per aksi, outlet, terminal, dan device.
+- Scope divisi masih fail-open ketika role user kosong atau memiliki lebih dari satu scope.
+- Penghapusan role memiliki bug penggunaan kolom permission yang salah dan belum dibungkus transaksi.
+- Konfigurasi keamanan masih terbuka: secret di source, CSRF nonaktif, cookie flag lemah, session terlalu panjang, dan CORS wildcard.
+- Backup script dapat melakukan commit dan push dump/log ke branch utama repository.
+- Migration framework belum aktif; perubahan database masih bergantung pada SQL manual.
+- Printer agent lokal memiliki endpoint cetak tanpa autentikasi request yang memadai.
+- Dashboard component belum memperhitungkan mismatch nilai, hanya quantity/lot quantity.
+- Sidebar, favorites, dan registry menu memiliki beberapa jalur permission yang tidak konsisten.
+- Data legacy masih membutuhkan rekonsiliasi identity material, lot, payroll, PH, finance balance, dan status POS.
+- Perbaikan historis stok/POS tidak boleh dilakukan massal sebelum preview, audit, transaksi, dan approval.
+- Batch pertama yang direkomendasikan: containment backup/secret, penguncian RBAC writer, perbaikan role delete, fail-closed scope, pengamanan POS mobile, dan printer agent.
+- Setelah batch pertama perlu dijalankan integration test permission, scope, POS stock state, CSRF/session/CORS, printer, serta query invariant stok dan finance.
+- Audit ini tidak membahas perluasan fitur komersialisasi; fokusnya adalah keamanan, integritas transaksi, dan kestabilan aplikasi.

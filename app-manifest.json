@@ -1,0 +1,431 @@
+{
+  "manifest_version": 2,
+  "product_code": "NAMUA_FINANCE",
+  "name": "Namua Finance POS",
+  "description": "Aplikasi operasional usaha dan kasir: POS web/mobile, persediaan, produksi, keuangan, HR, aset, serta integrasi terpilih.",
+  "version": "0.1.0-alpha.23",
+  "packaging": {
+    "contract_version": 1,
+    "adapter": "tools/build/customer_package.php",
+    "timeout_seconds": 1800,
+    "profiles": [
+      {
+        "code": "CUSTOMER_CLEAN",
+        "name": "Customer bersih",
+        "description": "Instalasi baru tanpa master, transaksi, foto, akun, dan identitas usaha development; hanya referensi sistem yang disetujui.",
+        "audience": "CUSTOMER",
+        "sample_data": "NONE",
+        "rules_path": "tools/release/customer_clean_profile.json",
+        "rules_sha256": "269e8ee19d6627b3dd8b519aca93e0edfdff66f097d4542104fc57e1d0486cd0",
+        "default": true
+      }
+    ]
+  },
+  "schema_version": "finance-20260907",
+  "baseline_schema_version": "clean-install-20260909",
+  "framework": "CodeIgniter 3.1.13",
+  "runtime": {
+    "php": ">=8.1 <8.2",
+    "database": "MariaDB >=10.11 <10.12"
+  },
+  "health_path": "/health",
+  "heartbeat_interval_seconds": 300,
+  "features": [
+    {
+      "code": "BUSINESS_PROFILE",
+      "name": "Profil usaha dan outlet",
+      "category": "Fondasi",
+      "description": "Identitas usaha, outlet, metode pembayaran, rekening dasar, dan konfigurasi operasional.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA"
+    },
+    {
+      "code": "RBAC_CORE",
+      "name": "Pengguna dan hak akses",
+      "category": "Fondasi",
+      "description": "Pengguna, peran, scope, dan pembatasan akses aplikasi.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA"
+    },
+    {
+      "code": "POS_WEB",
+      "name": "POS web",
+      "category": "Penjualan",
+      "description": "Kasir web, katalog, pembayaran, draft, refund/void berjejak, dan sesi kasir.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["BUSINESS_PROFILE", "RBAC_CORE"]
+    },
+    {
+      "code": "POS_PRINTER",
+      "name": "Printer kasir",
+      "category": "Penjualan",
+      "description": "Template struk, printer jaringan/agent, dan identitas cetak.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["POS_WEB"]
+    },
+    {
+      "code": "SALES_REPORTING",
+      "name": "Laporan penjualan dasar",
+      "category": "Penjualan",
+      "description": "Laporan penjualan harian, transaksi, produk, extra, dan pembayaran.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["POS_WEB"]
+    },
+    {
+      "code": "INVENTORY_WAREHOUSE",
+      "name": "Persediaan gudang",
+      "category": "Persediaan",
+      "description": "Gudang, bahan baku, stok divisi, lot, mutasi, dan saldo persediaan.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["BUSINESS_PROFILE"]
+    },
+    {
+      "code": "PROCUREMENT",
+      "name": "Pembelian dan permintaan toko",
+      "category": "Persediaan",
+      "description": "Purchase order, penerimaan, store request, dan fulfillment.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["INVENTORY_WAREHOUSE"]
+    },
+    {
+      "code": "INVENTORY_RECON",
+      "name": "Stock opname dan rekonsiliasi",
+      "category": "Persediaan",
+      "description": "Adjustment, rekonsiliasi, stok harian, lot audit, dan jejak koreksi.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["INVENTORY_WAREHOUSE"]
+    },
+    {
+      "code": "CUSTOMER_LOYALTY",
+      "name": "Member dan loyalitas",
+      "category": "Pelanggan",
+      "description": "Member, point, stamp, dan riwayat pelanggan.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["POS_WEB"]
+    },
+    {
+      "code": "PROMOTION_VOUCHER",
+      "name": "Promo dan voucher",
+      "category": "Pelanggan",
+      "description": "Promo, voucher, pemakaian voucher, dan aturan diskon.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["POS_WEB"]
+    },
+    {
+      "code": "SELF_ORDER",
+      "name": "Self order",
+      "category": "Kanal pesanan",
+      "description": "Pesanan mandiri yang masuk ke alur kasir dan produksi.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["POS_WEB"]
+    },
+    {
+      "code": "RESERVATION",
+      "name": "Reservasi",
+      "category": "Kanal pesanan",
+      "description": "Reservasi, deposit, persetujuan, dan refund yang berjejak.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["POS_WEB"]
+    },
+    {
+      "code": "ONLINE_ORDER",
+      "name": "Order online",
+      "category": "Kanal pesanan",
+      "description": "Order online dan integrasi kanal pesanan eksternal.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["POS_WEB"]
+    },
+    {
+      "code": "RECIPE_PRODUCT",
+      "name": "Resep produk",
+      "category": "Produksi",
+      "description": "Resep produk, extra, bundle, dan revision berjejak.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["INVENTORY_WAREHOUSE"]
+    },
+    {
+      "code": "COMPONENT_PRODUCTION",
+      "name": "Produksi component",
+      "category": "Produksi",
+      "description": "Formula component, batch produksi, lot component, dan pemakaian bahan.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["INVENTORY_WAREHOUSE", "RECIPE_PRODUCT"]
+    },
+    {
+      "code": "HPP_CONTROL",
+      "name": "HPP dan cost control",
+      "category": "Produksi",
+      "description": "HPP produk/penjualan, FIFO, defisit, cache HPP, dan Stock Health.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["COMPONENT_PRODUCTION", "INVENTORY_WAREHOUSE", "POS_WEB"]
+    },
+    {
+      "code": "FINANCE_ADVANCED",
+      "name": "Keuangan lanjutan",
+      "category": "Keuangan",
+      "description": "Kas, bank, jurnal, hutang/piutang, dan laporan keuangan lanjutan.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["POS_WEB"]
+    },
+    {
+      "code": "PERIOD_AUDIT",
+      "name": "Tutup periode dan audit",
+      "category": "Keuangan",
+      "description": "Period lock, audit transaksi, koreksi berjejak, dan ekspor audit.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["FINANCE_ADVANCED"]
+    },
+    {
+      "code": "ATTENDANCE",
+      "name": "Kehadiran dan pengajuan",
+      "category": "SDM",
+      "description": "Jadwal, presensi, PH, izin, dan penalty.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["RBAC_CORE"]
+    },
+    {
+      "code": "PAYROLL",
+      "name": "Payroll dan bonus",
+      "category": "SDM",
+      "description": "Periode payroll, gaji, bonus, uang makan, dan audit pembayaran.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["ATTENDANCE"]
+    },
+    {
+      "code": "ASSET_MANAGEMENT",
+      "name": "Aset dan reservation",
+      "category": "Operasional",
+      "description": "Aset, reservation, perubahan berapproval, dan laporan kejadian.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["BUSINESS_PROFILE"]
+    },
+    {
+      "code": "POS_MOBILE_APK",
+      "name": "APK POS",
+      "category": "Perangkat",
+      "description": "Kasir Android yang disinkronkan dengan POS web dan dapat bekerja saat koneksi terganggu.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["POS_WEB"]
+    },
+    {
+      "code": "INTEGRATION_API",
+      "name": "Integrasi API",
+      "category": "Integrasi",
+      "description": "API dan integrasi sistem/perangkat eksternal yang disetujui.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["BUSINESS_PROFILE"]
+    },
+    {
+      "code": "AUTOMATION_MESSAGING",
+      "name": "Automasi WhatsApp dan Telegram",
+      "category": "Integrasi",
+      "description": "Notifikasi, laporan terjadwal, dan broadcast melalui konektor yang dikonfigurasi customer.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "BETA",
+      "depends_on": ["BUSINESS_PROFILE"]
+    },
+    {
+      "code": "SINGLE_SIGN_ON",
+      "name": "Single Sign-On",
+      "category": "Integrasi",
+      "description": "Integrasi identitas customer sesuai kontrak Enterprise.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "PLANNED",
+      "depends_on": ["RBAC_CORE"]
+    },
+    {
+      "code": "CUSTOM_REPORT",
+      "name": "Laporan kustom",
+      "category": "Integrasi",
+      "description": "Laporan kustom sesuai ruang lingkup implementasi Enterprise.",
+      "value_type": "BOOLEAN",
+      "default_value": "0",
+      "maturity": "PLANNED",
+      "depends_on": ["SALES_REPORTING"]
+    },
+    {
+      "code": "LIMIT_OUTLETS",
+      "name": "Batas outlet aktif",
+      "category": "Kapasitas",
+      "description": "Jumlah outlet aktif yang dicakup lisensi sebelum add-on outlet diterapkan.",
+      "value_type": "INTEGER",
+      "default_value": "1",
+      "maturity": "BETA"
+    },
+    {
+      "code": "LIMIT_POS_TERMINALS",
+      "name": "Batas terminal POS aktif",
+      "category": "Kapasitas",
+      "description": "Jumlah terminal POS web atau APK aktif yang dicakup lisensi.",
+      "value_type": "INTEGER",
+      "default_value": "1",
+      "maturity": "BETA",
+      "depends_on": ["POS_WEB"]
+    }
+  ],
+  "editions": [
+    {
+      "code": "STARTER_POS",
+      "name": "Starter POS",
+      "description": "Kasir dasar untuk satu outlet dan satu terminal POS aktif.",
+      "sort_order": 10,
+      "features": {
+        "BUSINESS_PROFILE": "1",
+        "RBAC_CORE": "1",
+        "POS_WEB": "1",
+        "POS_PRINTER": "1",
+        "SALES_REPORTING": "1",
+        "LIMIT_OUTLETS": "1",
+        "LIMIT_POS_TERMINALS": "1"
+      }
+    },
+    {
+      "code": "OPERATIONS",
+      "name": "Operations",
+      "description": "Starter POS dengan persediaan, pembelian, pelanggan, promo, self order, dan reservasi.",
+      "sort_order": 20,
+      "features": {
+        "BUSINESS_PROFILE": "1",
+        "RBAC_CORE": "1",
+        "POS_WEB": "1",
+        "POS_PRINTER": "1",
+        "SALES_REPORTING": "1",
+        "INVENTORY_WAREHOUSE": "1",
+        "PROCUREMENT": "1",
+        "INVENTORY_RECON": "1",
+        "CUSTOMER_LOYALTY": "1",
+        "PROMOTION_VOUCHER": "1",
+        "SELF_ORDER": "1",
+        "RESERVATION": "1",
+        "LIMIT_OUTLETS": "1",
+        "LIMIT_POS_TERMINALS": "3"
+      }
+    },
+    {
+      "code": "CONTROL",
+      "name": "Control",
+      "description": "Operations dengan produksi, HPP, finance, tutup periode, audit, SDM, dan aset.",
+      "sort_order": 30,
+      "features": {
+        "BUSINESS_PROFILE": "1",
+        "RBAC_CORE": "1",
+        "POS_WEB": "1",
+        "POS_PRINTER": "1",
+        "SALES_REPORTING": "1",
+        "INVENTORY_WAREHOUSE": "1",
+        "PROCUREMENT": "1",
+        "INVENTORY_RECON": "1",
+        "CUSTOMER_LOYALTY": "1",
+        "PROMOTION_VOUCHER": "1",
+        "SELF_ORDER": "1",
+        "RESERVATION": "1",
+        "RECIPE_PRODUCT": "1",
+        "COMPONENT_PRODUCTION": "1",
+        "HPP_CONTROL": "1",
+        "FINANCE_ADVANCED": "1",
+        "PERIOD_AUDIT": "1",
+        "ATTENDANCE": "1",
+        "PAYROLL": "1",
+        "ASSET_MANAGEMENT": "1",
+        "LIMIT_OUTLETS": "1",
+        "LIMIT_POS_TERMINALS": "3"
+      }
+    },
+    {
+      "code": "ENTERPRISE",
+      "name": "Enterprise",
+      "description": "Control dengan APK POS, kanal online, integrasi, automasi, dan ruang lingkup Enterprise yang disepakati.",
+      "sort_order": 40,
+      "features": {
+        "BUSINESS_PROFILE": "1",
+        "RBAC_CORE": "1",
+        "POS_WEB": "1",
+        "POS_PRINTER": "1",
+        "SALES_REPORTING": "1",
+        "INVENTORY_WAREHOUSE": "1",
+        "PROCUREMENT": "1",
+        "INVENTORY_RECON": "1",
+        "CUSTOMER_LOYALTY": "1",
+        "PROMOTION_VOUCHER": "1",
+        "SELF_ORDER": "1",
+        "RESERVATION": "1",
+        "ONLINE_ORDER": "1",
+        "RECIPE_PRODUCT": "1",
+        "COMPONENT_PRODUCTION": "1",
+        "HPP_CONTROL": "1",
+        "FINANCE_ADVANCED": "1",
+        "PERIOD_AUDIT": "1",
+        "ATTENDANCE": "1",
+        "PAYROLL": "1",
+        "ASSET_MANAGEMENT": "1",
+        "POS_MOBILE_APK": "1",
+        "INTEGRATION_API": "1",
+        "AUTOMATION_MESSAGING": "1",
+        "SINGLE_SIGN_ON": "1",
+        "CUSTOM_REPORT": "1",
+        "LIMIT_OUTLETS": "5",
+        "LIMIT_POS_TERMINALS": "5"
+      }
+    }
+  ],
+  "licensing": {
+    "mode": "SIGNED_OFFLINE_CAPABLE",
+    "rights_model": "PERPETUAL",
+    "metric": "SERVER_INSTANCE",
+    "default_max_instances": 1,
+    "default_maintenance_days": 365,
+    "user_limit": null,
+    "guard_required": true,
+    "agent_min_version": "0.1.0",
+    "supported_platforms": ["linux-amd64"],
+    "lease_days": 30,
+    "grace_days": 30,
+    "expired_behavior": "WARN_ONLY"
+  }
+}

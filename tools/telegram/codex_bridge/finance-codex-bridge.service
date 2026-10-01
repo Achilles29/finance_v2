@@ -1,0 +1,21 @@
+[Unit]
+Description=Internal owner-only Finance Telegram Codex bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+UMask=0077
+WorkingDirectory=/www/wwwroot/finance
+ExecStart=/usr/bin/python3 /opt/finance-codex-bridge/bridge.py serve
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillMode=control-group
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

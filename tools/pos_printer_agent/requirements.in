@@ -1,0 +1,6 @@
+# Direct runtime dependencies for the POS printer agent.
+# Compile requirements.txt with hashes; ranges here preserve upgrade intent.
+Flask>=3.0.0
+pyserial>=3.5
+Pillow>=10.0.0
+qrcode[pil]>=7.4.2

@@ -1,0 +1,11 @@
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+RewriteEngine On
+RewriteRule (^|/)\. - [F,L]
+RewriteRule ^system/(?:license|business-profile|feature-access|activity-audit|roast-connect(?:/save|/token)?)$ index.php [L]
+RewriteRule ^(?:config|private|storage|installer|application|system|tools|sql|vendor)(?:/|$) - [F,L,NC]
+RewriteCond %{REQUEST_URI} !^/index\.php$
+RewriteRule \.(?:php[0-9]?|phtml|phar)(?:/|$) - [F,L,NC]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]

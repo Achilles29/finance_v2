@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Namua — Label v2 Bean Pattern</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,700;1,300&family=DM+Sans:opsz,wght@9..40,200;9..40,300&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{background:#0e0e0e;padding:60px 50px 100px;font-family:'DM Sans',sans-serif}
+.ph{color:rgba(255,243,220,.25);font-size:9px;letter-spacing:5px;text-transform:uppercase;font-weight:200;margin-bottom:60px}
+.st{color:rgba(255,243,220,.2);font-size:8px;letter-spacing:4px;text-transform:uppercase;font-weight:200;margin-bottom:30px;margin-top:72px}
+.row{display:flex;gap:48px;align-items:flex-end;flex-wrap:wrap}
+.rts{align-items:flex-start}
+.vcap{color:rgba(255,243,220,.22);font-size:8px;text-align:center;margin-top:14px;letter-spacing:3px;font-weight:200;text-transform:uppercase}
+
+.label{position:relative;flex-shrink:0;box-shadow:0 10px 50px rgba(0,0,0,.65)}
+.s200{width:210px;height:315px}
+.s500{width:262px;height:393px}
+.s1kg{width:314px;height:471px}
+.lsvg{position:absolute;inset:0;width:100%;height:100%}
+
+.ct{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center}
+.tp{flex:0 0 17%}
+.nm{font-family:'Cormorant Garamond',serif;font-weight:700;color:#FFF3DC;text-align:center;text-transform:uppercase;letter-spacing:3px;line-height:1.08;text-shadow:0 2px 28px rgba(40,3,3,.98)}
+.s200 .nm{font-size:18px}.s500 .nm{font-size:22px}.s1kg .nm{font-size:27px}
+.pr{font-family:'DM Sans',sans-serif;font-weight:200;color:rgba(255,243,220,.6);text-transform:uppercase;letter-spacing:4px;margin-top:8px;text-align:center}
+.s200 .pr{font-size:6px}.s500 .pr{font-size:7.5px}.s1kg .pr{font-size:8.5px}
+.dl{width:26px;height:.5px;background:rgba(255,243,220,.28);margin:10px 0;flex-shrink:0}
+.nt{font-family:'DM Sans',sans-serif;font-weight:200;font-style:italic;color:rgba(255,243,220,.55);text-align:center;letter-spacing:.5px;line-height:1.7}
+.s200 .nt{font-size:6.5px}.s500 .nt{font-size:8px}.s1kg .nt{font-size:9px}
+.sp{flex:1}
+.bt{width:100%;flex:0 0 33%;display:flex;flex-direction:column;justify-content:flex-end;padding:0 10% 5.5%}
+.bl{width:100%;height:.5px;background:rgba(255,243,220,.18);margin-bottom:9px}
+.bm{display:flex;justify-content:space-between;align-items:baseline}
+.br{font-family:'Cormorant Garamond',serif;font-weight:300;font-style:italic;color:rgba(255,243,220,.9);letter-spacing:2px}
+.s200 .br{font-size:14px}.s500 .br{font-size:17px}.s1kg .br{font-size:20px}
+.wg{font-family:'Space Mono',monospace;color:rgba(255,243,220,.65);border:.5px solid rgba(255,243,220,.28);padding:2px 6px;border-radius:2px}
+.s200 .wg{font-size:6px}.s500 .wg{font-size:7.5px}.s1kg .wg{font-size:8.5px}
+.bd2{display:flex;justify-content:space-between;align-items:center;margin-top:5px}
+.og{font-family:'DM Sans',sans-serif;font-weight:200;color:rgba(255,243,220,.32);text-transform:uppercase;letter-spacing:2px}
+.s200 .og{font-size:5px}.s500 .og{font-size:6px}.s1kg .og{font-size:7px}
+.tg{font-family:'DM Sans',sans-serif;font-weight:200;color:rgba(255,243,220,.2);text-transform:uppercase;letter-spacing:1px}
+.s200 .tg{font-size:4px}.s500 .tg{font-size:5px}.s1kg .tg{font-size:5.5px}
+
+.poster{position:relative;width:490px;height:700px;box-shadow:0 16px 80px rgba(0,0,0,.7);margin-top:40px}
+.psvg{position:absolute;inset:0;width:100%;height:100%}
+.pct{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.psp{font-family:'DM Sans',sans-serif;font-weight:200;font-size:8px;color:rgba(255,243,220,.36);letter-spacing:7px;text-transform:uppercase;margin-bottom:8px}
+.pnm{font-family:'Cormorant Garamond',serif;font-weight:300;font-style:italic;font-size:78px;color:#FFF3DC;letter-spacing:12px;text-shadow:0 4px 50px rgba(40,3,3,.98);line-height:1}
+.psb{font-family:'DM Sans',sans-serif;font-weight:200;font-size:10px;color:rgba(255,243,220,.45);letter-spacing:8px;text-transform:uppercase;margin-top:16px}
+.ptg{position:absolute;bottom:7%;left:0;right:0;text-align:center;font-family:'DM Sans',sans-serif;font-weight:200;font-size:7px;color:rgba(255,243,220,.22);letter-spacing:4px;text-transform:uppercase;z-index:2}
+
+.pn{margin-top:80px;padding:24px 28px;border:.5px solid rgba(255,243,220,.1);border-radius:4px;max-width:700px}
+.pn p{font-family:'DM Sans',sans-serif;font-weight:200;font-size:10px;color:rgba(255,243,220,.32);letter-spacing:1.5px;line-height:2;text-transform:uppercase}
+.pn strong{color:rgba(255,243,220,.52);font-weight:300}
+</style>
+</head>
+<body>
+
+<div class="ph">Namua Coffee Roastery — Label "Lembayung" v2 — Bean Pattern</div>
+
+<!-- ===== SECTION 1: SIZES ===== -->
+<div class="st">Ukuran Label — Gayo Arabica · Natural Process</div>
+<div class="row">
+
+  <!-- 200g -->
+  <div class="label s200">
+    <svg class="lsvg" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gn" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+          <stop offset="0%" stop-color="#4A0C0C"/><stop offset="18%" stop-color="#6B1212"/>
+          <stop offset="52%" stop-color="#D4872A"/><stop offset="76%" stop-color="#EDD49A"/>
+          <stop offset="100%" stop-color="#FFF3DC"/>
+        </linearGradient>
+        <pattern id="bp" x="0" y="0" width="9" height="12" patternUnits="userSpaceOnUse">
+          <ellipse cx="2.5" cy="3.5" rx="2.2" ry="3.3" fill="#FFF3DC" fill-opacity=".05" stroke="#FFF3DC" stroke-opacity=".22" stroke-width=".25"/>
+          <path d="M2.5.2 C1.2,3.5 3.8,3.5 2.5,6.8" fill="none" stroke="#FFF3DC" stroke-opacity=".11" stroke-width=".2"/>
+          <ellipse cx="6.5" cy="9.5" rx="2.2" ry="3.3" fill="#FFF3DC" fill-opacity=".05" stroke="#FFF3DC" stroke-opacity=".22" stroke-width=".25"/>
+          <path d="M6.5,6.2 C5.2,9.5 7.8,9.5 6.5,12.8" fill="none" stroke="#FFF3DC" stroke-opacity=".11" stroke-width=".2"/>
+        </pattern>
+        <radialGradient id="lbl" cx="74%" cy="17%" r="50%" gradientUnits="objectBoundingBox">
+          <stop offset="0%" stop-color="#FFF3DC" stop-opacity=".2"/><stop offset="100%" stop-color="#FFF3DC" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="dbl" cx="18%" cy="85%" r="56%" gradientUnits="objectBoundingBox">
+          <stop offset="0%" stop-color="#4A0808" stop-opacity=".52"/><stop offset="100%" stop-color="#4A0808" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="100" height="150" fill="url(#gn)"/>
+      <rect width="100" height="150" fill="url(#bp)"/>
+      <rect width="100" height="150" fill="url(#lbl)"/>
+      <rect width="100" height="150" fill="url(#dbl)"/>
+      <rect width="100" height="150" fill="none" stroke="#1e0303" stroke-width="18" stroke-opacity=".38"/>
+      <ellipse cx="50" cy="54" rx="41" ry="47" fill="none" stroke="#FFF3DC" stroke-opacity=".38" stroke-width=".5"/>
+      <ellipse cx="50" cy="54" rx="39" ry="45" fill="none" stroke="#FFF3DC" stroke-opacity=".14" stroke-width=".28"/>
+    </svg>
+    <div class="ct">
+      <div class="tp"></div>
+      <div class="nm">Gayo<br>Arabica</div>
+      <div class="pr">Natural Process</div>
+      <div class="dl"></div>
+      <div class="nt">Dark Chocolate<br>Caramel · Brown Sugar</div>
+      <div class="sp"></div>
+      <div class="bt">
+        <div class="bl"></div>
+        <div class="bm"><span class="br">namua</span><span class="wg">200 g</span></div>
+        <div class="bd2"><span class="og">Gayo · Aceh</span><span class="tg">From Soil To Cup</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 500g -->
+  <div class="label s500">
+    <svg class="lsvg" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gn2" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+          <stop offset="0%" stop-color="#4A0C0C"/><stop offset="18%" stop-color="#6B1212"/>
+          <stop offset="52%" stop-color="#D4872A"/><stop offset="76%" stop-color="#EDD49A"/>
+          <stop offset="100%" stop-color="#FFF3DC"/>
+        </linearGradient>
+        <pattern id="bp2" x="0" y="0" width="9" height="12" patternUnits="userSpaceOnUse">
+          <ellipse cx="2.5" cy="3.5" rx="2.2" ry="3.3" fill="#FFF3DC" fill-opacity=".05" stroke="#FFF3DC" stroke-opacity=".22" stroke-width=".25"/>
+          <path d="M2.5.2 C1.2,3.5 3.8,3.5 2.5,6.8" fill="none" stroke="#FFF3DC" stroke-opacity=".11" stroke-width=".2"/>
+          <ellipse cx="6.5" cy="9.5" rx="2.2" ry="3.3" fill="#FFF3DC" fill-opacity=".05" stroke="#FFF3DC" stroke-opacity=".22" stroke-width=".25"/>
+          <path d="M6.5,6.2 C5.2,9.5 7.8,9.5 6.5,12.8" fill="none" stroke="#FFF3DC" stroke-opacity=".11" stroke-width=".2"/>
+        </pattern>
+        <radialGradient id="lbl2" cx="74%" cy="17%" r="50%" gradientUnits="objectBoundingBox">
+          <stop offset="0%" stop-color="#FFF3DC" stop-opacity=".2"/><stop offset="100%" stop-color="#FFF3DC" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="dbl2" cx="18%" cy="85%" r="56%" gradientUnits="objectBoundingBox">
+          <stop offset="0%" stop-color="#4A0808" stop-opacity=".52"/><stop offset="100%" stop-color="#4A0808" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="100" height="150" fill="url(#gn2)"/>
+      <rect width="100" height="150" fill="url(#bp2)"/>
+      <rect width="100" height="150" fill="url(#lbl2)"/>
+      <rect width="100" height="150" fill="url(#dbl2)"/>
+      <rect width="100" height="150" fill="none" stroke="#1e0303" stroke-width="18" stroke-opacity=".38"/>
+      <ellipse cx="50" cy="54" rx="41" ry="47" fill="none" stroke="#FFF3DC" stroke-opacity=".38" stroke-width=".5"/>
+      <ellipse cx="50" cy="54" rx="39" ry="45" fill="none" stroke="#FFF3DC" stroke-opacity=".14" stroke-width=".28"/>
+    </svg>
+    <div class="ct">
+      <div class="tp"></div>
+      <div class="nm">Gayo<br>Arabica</div>
+      <div class="pr">Natural Process</div>
+      <div class="dl"></div>
+      <div class="nt">Dark Chocolate<br>Caramel · Brown Sugar</div>
+      <div class="sp"></div>
+      <div class="bt">
+        <div class="bl"></div>
+        <div class="bm"><span class="br">namua</span><span class="wg">500 g</span></div>
+        <div class="bd2"><span class="og">Gayo · Aceh · Arabica</span><span class="tg">From Soil To Cup</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1kg -->
+  <div class="label s1kg">
+    <svg class="lsvg" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gn3" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+          <stop offset="0%" stop-color="#4A0C0C"/><stop offset="18%" stop-color="#6B1212"/>
+          <stop offset="52%" stop-color="#D4872A"/><stop offset="76%" stop-color="#EDD49A"/>
+          <stop offset="100%" stop-color="#FFF3DC"/>
+        </linearGradient>
+        <pattern id="bp3" x="0" y="0" width="9" height="12" patternUnits="userSpaceOnUse">
+          <ellipse cx="2.5" cy="3.5" rx="2.2" ry="3.3" fill="#FFF3DC" fill-opacity=".05" stroke="#FFF3DC" stroke-opacity=".22" stroke-width=".25"/>
+          <path d="M2.5.2 C1.2,3.5 3.8,3.5 2.5,6.8" fill="none" stroke="#FFF3DC" stroke-opacity=".11" stroke-width=".2"/>
+          <ellipse cx="6.5" cy="9.5" rx="2.2" ry="3.3" fill="#FFF3DC" fill-opacity=".05" stroke="#FFF3DC" stroke-opacity=".22" stroke-width=".25"/>
+          <path d="M6.5,6.2 C5.2,9.5 7.8,9.5 6.5,12.8" fill="none" stroke="#FFF3DC" stroke-opacity=".11" stroke-width=".2"/>
+        </pattern>
+        <radialGradient id="lbl3" cx="74%" cy="17%" r="50%" gradientUnits="objectBoundingBox">
+          <stop offset="0%" stop-color="#FFF3DC" stop-opacity=".2"/><stop offset="100%" stop-color="#FFF3DC" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="dbl3" cx="18%" cy="85%" r="56%" gradientUnits="objectBoundingBox">
+          <stop offset="0%" stop-color="#4A0808" stop-opacity=".52"/><stop offset="100%" stop-color="#4A0808" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="100" height="150" fill="url(#gn3)"/>
+      <rect width="100" height="150" fill="url(#bp3)"/>
+      <rect width="100" height="150" fill="url(#lbl3)"/>
+      <rect width="100" height="150" fill="url(#dbl3)"/>
+      <rect width="100" height="150" fill="none" stroke="#1e0303" stroke-width="18" stroke-opacity=".38"/>
+      <ellipse cx="50" cy="54" rx="41" ry="47" fill="none" stroke="#FFF3DC" stroke-opacity=".38" stroke-width=".5"/>
+      <ellipse cx="50" cy="54" rx="39" ry="45" fill="none" stroke="#FFF3DC" stroke-opacity=".14" stroke-width=".28"/>
+    </svg>
+    <div class="ct">
+      <div class="tp"></div>
+      <div class="nm">Gayo<br>Arabica</div>
+      <div class="pr">Natural Process</div>
+      <div class="dl"></div>
+      <div class="nt">Dark Chocolate · Caramel<br>Brown Sugar · Mild Earthy</div>
+      <div class="sp"></div>
+      <div class="bt">
+        <div class="bl"></div>
+        <div class="bm"><span class="br">namua</span><span class="wg">1 kg</span></div>
+        <div class="bd2"><span class="og">Gayo · Aceh · Arabica · Bourbon</span><span class="tg">From Soil To Cup</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== SECTION 2: COLOUR VARIANTS (500g) ===== -->
+<div class="st">Varian Warna — per Jenis Proses (500g)</div>
+<div class="row rts">
+
+  <!-- NATURAL -->
+  <div>
+    <div class="label s500">
+      <svg class="lsvg" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="vgn" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#4A0C0C"/><stop offset="18%" stop-color="#6B1212"/>
+            <stop offset="52%" stop-color="#D4872A"/><stop offset="76%" stop-color="#EDD49A"/>
+            <stop offset="100%" stop-color="#FFF3DC"/>
+          </linearGradient>
+          <pattern id="vbp1" x="0" y="0" width="9" height="12" patternUnits="userSpaceOnUse">
+            <ellipse cx="2.5" cy="3.5" rx="2.2" ry="3.3" fill="#FFF3DC" fill-opacity=".05" stroke="#FFF3DC" stroke-opacity=".22" stroke-width=".25"/>
+            <path d="M2.5.2 C1.2,3.5 3.8,3.5 2.5,6.8" fill="none" stroke="#FFF3DC" stroke-opacity=".11" stroke-width=".2"/>
+            <ellipse cx="6.5" cy="9.5" rx="2.2" ry="3.3" fill="#FFF3DC" fill-opacity=".05" stroke="#FFF3DC" stroke-opacity=".22" stroke-width=".25"/>
+            <path d="M6.5,6.2 C5.2,9.5 7.8,9.5 6.5,12.8" fill="none" stroke="#FFF3DC" stroke-opacity=".11" stroke-width=".2"/>
+          </pattern>
+          <radialGradient id="vlb1" cx="74%" cy="17%" r="50%" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#FFF3DC" stop-opacity=".2"/><stop offset="100%" stop-color="#FFF3DC" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="vdb1" cx="18%" cy="85%" r="56%" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#4A0808" stop-opacity=".52"/><stop offset="100%" stop-color="#4A0808" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect width="100" height="150" fill="url(#vgn)"/>
+        <rect width="100" height="150" fill="url(#vbp1)"/>
+        <rect width="100" height="150" fill="url(#vlb1)"/>
+        <rect width="100" height="150" fill="url(#vdb1)"/>
+        <rect width="100" height="150" fill="none" stroke="#1e0303" stroke-width="18" stroke-opacity=".38"/>
+        <ellipse cx="50" cy="54" rx="41" ry="47" fill="none" stroke="#FFF3DC" stroke-opacity=".38" stroke-width=".5"/>
+        <ellipse cx="50" cy="54" rx="39" ry="45" fill="none" stroke="#FFF3DC" stroke-opacity=".14" stroke-width=".28"/>
+      </svg>
+      <div class="ct">
+        <div class="tp"></div>
+        <div class="nm">Gayo<br>Arabica</div>
+        <div class="pr">Natural Process</div>
+        <div class="dl"></div>
+        <div class="nt">Chocolate · Caramel<br>Brown Sugar</div>
+        <div class="sp"></div>
+        <div class="bt">
+          <div class="bl"></div>
+          <div class="bm"><span class="br">namua</span><span class="wg">500 g</span></div>
+          <div class="bd2"><span class="og">Gayo · Aceh</span><span class="tg">Natural</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="vcap">Natural — Amber</div>
+  </div>
+
+  <!-- HONEY -->
+  <div>
+    <div class="label s500">
+      <svg class="lsvg" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="vgh" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#4A0C0C"/><stop offset="18%" stop-color="#6B1212"/>
+            <stop offset="52%" stop-color="#D4A020"/><stop offset="76%" stop-color="#EDD49A"/>
+            <stop offset="100%" stop-color="#FFF3DC"/>
+          </linearGradient>
+          <pattern id="vbp2" x="0" y="0" width="9" height="12" patternUnits="userSpaceOnUse">
+            <ellipse cx="2.5" cy="3.5" rx="2.2" ry="3.3" fill="#FFF3DC" fill-opacity=".05" stroke="#FFF3DC" stroke-opacity=".22" stroke-width=".25"/>
+            <path d="M2.5.2 C1.2,3.5 3.8,3.5 2.5,6.8" fill="none" stroke="#FFF3DC" stroke-opacity=".11" stroke-width=".2"/>
+            <ellipse cx="6.5" cy="9.5" rx="2.2" ry="3.3" fill="#FFF3DC" fill-opacity=".05" stroke="#FFF3DC" stroke-opacity=".22" stroke-width=".25"/>
+            <path d="M6.5,6.2 C5.2,9.5 7.8,9.5 6.5,12.8" fill="none" stroke="#FFF3DC" stroke-opacity=".11" stroke-width=".2"/>
+          </pattern>
+          <radialGradient id="vlb2" cx="74%" cy="17%" r="50%" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#FFF3DC" stop-opacity=".2"/><stop offset="100%" stop-color="#FFF3DC" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="vdb2" cx="18%" cy="85%" r="56%" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#4A0808" stop-opacity=".52"/><stop offset="100%" stop-color="#4A0808" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect width="100" height="150" fill="url(#vgh)"/>
+        <rect width="100" height="150" fill="url(#vbp2)"/>
+        <rect width="100" height="150" fill="url(#vlb2)"/>
+        <rect width="100" height="150" fill="url(#vdb2)"/>
+        <rect width="100" height="150" fill="none" stroke="#1e0303" stroke-width="18" stroke-opacity=".38"/>
+        <ellipse cx="50" cy="54" rx="41" ry="47" fill="none" stroke="#FFF3DC" stroke-opacity=".38" stroke-width=".5"/>
+        <ellipse cx="50" cy="54" rx="39" ry="45" fill="none" stroke="#FFF3DC" stroke-opacity=".14" stroke-width=".28"/>
+      </svg>
+      <div class="ct">
+        <div class="tp"></div>
+        <div class="nm">Flores<br>Bajawa</div>
+        <div class="pr">Honey Process</div>
+        <div class="dl"></div>
+        <div class="nt">Honey · Stone Fruit<br>Jasmine</div>
+        <div class="sp"></div>
+        <div class="bt">
+          <div class="bl"></div>
+          <div class="bm"><span class="br">namua</span><span class="wg">500 g</span></div>
+          <div class="bd2"><span class="og">Flores · NTT</span><span class="tg">Honey</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="vcap">Honey — Golden</div>
+  </div>
+
+  <!-- ANAEROB -->
+  <div>
+    <div class="label s500">
+      <svg class="lsvg" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="vga" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#1E0A14"/><stop offset="18%" stop-color="#3A0F22"/>
+            <stop offset="52%" stop-color="#8B2252"/><stop offset="76%" stop-color="#C48888"/>
+            <stop offset="100%" stop-color="#FFF0F5"/>
+          </linearGradient>
+          <pattern id="vbp3" x="0" y="0" width="9" height="12" patternUnits="userSpaceOnUse">
+            <ellipse cx="2.5" cy="3.5" rx="2.2" ry="3.3" fill="#FFF0F5" fill-opacity=".05" stroke="#FFF0F5" stroke-opacity=".22" stroke-width=".25"/>
+            <path d="M2.5.2 C1.2,3.5 3.8,3.5 2.5,6.8" fill="none" stroke="#FFF0F5" stroke-opacity=".11" stroke-width=".2"/>
+            <ellipse cx="6.5" cy="9.5" rx="2.2" ry="3.3" fill="#FFF0F5" fill-opacity=".05" stroke="#FFF0F5" stroke-opacity=".22" stroke-width=".25"/>
+            <path d="M6.5,6.2 C5.2,9.5 7.8,9.5 6.5,12.8" fill="none" stroke="#FFF0F5" stroke-opacity=".11" stroke-width=".2"/>
+          </pattern>
+          <radialGradient id="vlb3" cx="74%" cy="17%" r="50%" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#FFF0F5" stop-opacity=".18"/><stop offset="100%" stop-color="#FFF0F5" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="vdb3" cx="18%" cy="85%" r="56%" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#200510" stop-opacity=".55"/><stop offset="100%" stop-color="#200510" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect width="100" height="150" fill="url(#vga)"/>
+        <rect width="100" height="150" fill="url(#vbp3)"/>
+        <rect width="100" height="150" fill="url(#vlb3)"/>
+        <rect width="100" height="150" fill="url(#vdb3)"/>
+        <rect width="100" height="150" fill="none" stroke="#12030a" stroke-width="18" stroke-opacity=".38"/>
+        <ellipse cx="50" cy="54" rx="41" ry="47" fill="none" stroke="#FFF0F5" stroke-opacity=".38" stroke-width=".5"/>
+        <ellipse cx="50" cy="54" rx="39" ry="45" fill="none" stroke="#FFF0F5" stroke-opacity=".14" stroke-width=".28"/>
+      </svg>
+      <div class="ct">
+        <div class="tp"></div>
+        <div class="nm">Java<br>Preanger</div>
+        <div class="pr">Anaerob Wine</div>
+        <div class="dl"></div>
+        <div class="nt">Red Wine · Blackberry<br>Dark Plum</div>
+        <div class="sp"></div>
+        <div class="bt">
+          <div class="bl"></div>
+          <div class="bm"><span class="br">namua</span><span class="wg">500 g</span></div>
+          <div class="bd2"><span class="og">Preanger · Jawa Barat</span><span class="tg">Anaerob</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="vcap">Anaerob — Burgundy</div>
+  </div>
+
+  <!-- WASHED -->
+  <div>
+    <div class="label s500">
+      <svg class="lsvg" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="vgw" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#081420"/><stop offset="18%" stop-color="#0E2030"/>
+            <stop offset="52%" stop-color="#286B7A"/><stop offset="76%" stop-color="#8ABBC4"/>
+            <stop offset="100%" stop-color="#EFF8FA"/>
+          </linearGradient>
+          <pattern id="vbp4" x="0" y="0" width="9" height="12" patternUnits="userSpaceOnUse">
+            <ellipse cx="2.5" cy="3.5" rx="2.2" ry="3.3" fill="#EFF8FA" fill-opacity=".05" stroke="#EFF8FA" stroke-opacity=".22" stroke-width=".25"/>
+            <path d="M2.5.2 C1.2,3.5 3.8,3.5 2.5,6.8" fill="none" stroke="#EFF8FA" stroke-opacity=".11" stroke-width=".2"/>
+            <ellipse cx="6.5" cy="9.5" rx="2.2" ry="3.3" fill="#EFF8FA" fill-opacity=".05" stroke="#EFF8FA" stroke-opacity=".22" stroke-width=".25"/>
+            <path d="M6.5,6.2 C5.2,9.5 7.8,9.5 6.5,12.8" fill="none" stroke="#EFF8FA" stroke-opacity=".11" stroke-width=".2"/>
+          </pattern>
+          <radialGradient id="vlb4" cx="74%" cy="17%" r="50%" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#EFF8FA" stop-opacity=".18"/><stop offset="100%" stop-color="#EFF8FA" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="vdb4" cx="18%" cy="85%" r="56%" gradientUnits="objectBoundingBox">
+            <stop offset="0%" stop-color="#040c14" stop-opacity=".55"/><stop offset="100%" stop-color="#040c14" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect width="100" height="150" fill="url(#vgw)"/>
+        <rect width="100" height="150" fill="url(#vbp4)"/>
+        <rect width="100" height="150" fill="url(#vlb4)"/>
+        <rect width="100" height="150" fill="url(#vdb4)"/>
+        <rect width="100" height="150" fill="none" stroke="#040c14" stroke-width="18" stroke-opacity=".38"/>
+        <ellipse cx="50" cy="54" rx="41" ry="47" fill="none" stroke="#EFF8FA" stroke-opacity=".38" stroke-width=".5"/>
+        <ellipse cx="50" cy="54" rx="39" ry="45" fill="none" stroke="#EFF8FA" stroke-opacity=".14" stroke-width=".28"/>
+      </svg>
+      <div class="ct">
+        <div class="tp"></div>
+        <div class="nm">Toraja<br>Arabica</div>
+        <div class="pr">Washed Process</div>
+        <div class="dl"></div>
+        <div class="nt">Green Apple · Citrus<br>Clean &amp; Bright</div>
+        <div class="sp"></div>
+        <div class="bt">
+          <div class="bl"></div>
+          <div class="bm"><span class="br">namua</span><span class="wg">500 g</span></div>
+          <div class="bd2"><span class="og">Toraja · Sulawesi</span><span class="tg">Washed</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="vcap">Washed — Teal</div>
+  </div>
+
+</div>
+
+<!-- ===== SECTION 3: POSTER ===== -->
+<div class="st">Wall Art / Brand Poster — A2/A3</div>
+
+<div class="poster">
+  <svg class="psvg" viewBox="0 0 100 143" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="pgn" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+        <stop offset="0%" stop-color="#4A0C0C"/><stop offset="18%" stop-color="#6B1212"/>
+        <stop offset="50%" stop-color="#D4872A"/><stop offset="75%" stop-color="#EDD49A"/>
+        <stop offset="100%" stop-color="#FFF3DC"/>
+      </linearGradient>
+      <pattern id="pbp" x="0" y="0" width="9" height="12" patternUnits="userSpaceOnUse">
+        <ellipse cx="2.5" cy="3.5" rx="2.2" ry="3.3" fill="#FFF3DC" fill-opacity=".05" stroke="#FFF3DC" stroke-opacity=".2" stroke-width=".25"/>
+        <path d="M2.5.2 C1.2,3.5 3.8,3.5 2.5,6.8" fill="none" stroke="#FFF3DC" stroke-opacity=".1" stroke-width=".2"/>
+        <ellipse cx="6.5" cy="9.5" rx="2.2" ry="3.3" fill="#FFF3DC" fill-opacity=".05" stroke="#FFF3DC" stroke-opacity=".2" stroke-width=".25"/>
+        <path d="M6.5,6.2 C5.2,9.5 7.8,9.5 6.5,12.8" fill="none" stroke="#FFF3DC" stroke-opacity=".1" stroke-width=".2"/>
+      </pattern>
+      <radialGradient id="plb" cx="74%" cy="17%" r="50%" gradientUnits="objectBoundingBox">
+        <stop offset="0%" stop-color="#FFF3DC" stop-opacity=".18"/><stop offset="100%" stop-color="#FFF3DC" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="pdb" cx="18%" cy="85%" r="56%" gradientUnits="objectBoundingBox">
+        <stop offset="0%" stop-color="#4A0808" stop-opacity=".5"/><stop offset="100%" stop-color="#4A0808" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="100" height="143" fill="url(#pgn)"/>
+    <rect width="100" height="143" fill="url(#pbp)"/>
+    <rect width="100" height="143" fill="url(#plb)"/>
+    <rect width="100" height="143" fill="url(#pdb)"/>
+    <rect width="100" height="143" fill="none" stroke="#1e0303" stroke-width="16" stroke-opacity=".42"/>
+    <ellipse cx="50" cy="71.5" rx="40" ry="60" fill="none" stroke="#FFF3DC" stroke-opacity=".3" stroke-width=".7"/>
+    <ellipse cx="50" cy="71.5" rx="37.5" ry="57.5" fill="none" stroke="#FFF3DC" stroke-opacity=".12" stroke-width=".35"/>
+  </svg>
+  <div class="pct">
+    <div class="psp">Est. 2024</div>
+    <div class="pnm">namua</div>
+    <div class="psb">Coffee Roastery</div>
+  </div>
+  <div class="ptg">From Soil · To Sip · To Soul</div>
+</div>
+
+<!-- NOTES -->
+<div class="pn">
+  <p>
+    <strong>Pola:</strong> Biji kopi kecil berulang (offset/brick pattern) — identitas visual utama Namua<br>
+    <strong>Frame:</strong> Oval ganda — referensi bentuk biji kopi pada logo + bingkai oval fasad<br>
+    <strong>Gradasi:</strong> Diagonal maroon → accent → cream. Accent berubah per proses kopi<br><br>
+    <strong>Ukuran cetak:</strong> 200g = 7×10.5cm · 500g = 8.7×13.1cm · 1kg = 10.5×15.7cm<br>
+    <strong>Font:</strong> Cormorant Garamond · DM Sans · Space Mono (gratis di Google Fonts)<br><br>
+    <strong>Warna:</strong> Maroon #6B1212 · Natural #D4872A · Honey #D4A020 · Anaerob #8B2252 · Washed #286B7A · Cream #FFF3DC<br><br>
+    <strong>Export:</strong> Screenshot dari browser → cetak di kertas stiker glossy/matte. Atau bawa spec ke Figma/Canva untuk file 300dpi.
+  </p>
+</div>
+
+</body>
+</html>

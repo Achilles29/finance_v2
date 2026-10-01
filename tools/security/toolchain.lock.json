@@ -1,0 +1,48 @@
+{
+  "schema": "finance.a4-security-toolchain",
+  "schema_version": 1,
+  "runtime": {
+    "environment": "A4_SECURITY_RUNTIME_DIR",
+    "default_directory": "/var/lib/finance-a4-security",
+    "lock_relative_path": "runtime.lock"
+  },
+  "osv_scanner": {
+    "version": "2.5.1",
+    "platform": "linux-amd64",
+    "url": "https://github.com/google/osv-scanner/releases/download/v2.5.1/osv-scanner_linux_amd64",
+    "sha256": "f9f25499a2c8cc367b3af45df2ea7eeca7fbccceab9c35079968f4b3652194be",
+    "relative_path": "bin/osv-scanner"
+  },
+  "offline_databases": {
+    "cache_environment": "OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY",
+    "relative_root": "cache",
+    "snapshot_relative_path": "osv-db-snapshot.json",
+    "max_age_seconds": 172800,
+    "ecosystems": [
+      {
+        "name": "Packagist",
+        "url": "https://osv-vulnerabilities.storage.googleapis.com/Packagist/all.zip",
+        "relative_path": "osv-scalibr/Packagist/all.zip"
+      },
+      {
+        "name": "npm",
+        "url": "https://osv-vulnerabilities.storage.googleapis.com/npm/all.zip",
+        "relative_path": "osv-scalibr/npm/all.zip"
+      },
+      {
+        "name": "PyPI",
+        "url": "https://osv-vulnerabilities.storage.googleapis.com/PyPI/all.zip",
+        "relative_path": "osv-scalibr/PyPI/all.zip"
+      }
+    ]
+  },
+  "scan": {
+    "timeout_seconds": 120,
+    "maximum_captured_bytes": 1048576,
+    "lockfiles": [
+      "composer.lock",
+      "wa-engine/package-lock.json",
+      "tools/pos_printer_agent/requirements.txt"
+    ]
+  }
+}

@@ -1,0 +1,68 @@
+.DS_Store
+
+application/cache/*
+!application/cache/index.html
+
+application/logs/*
+!application/logs/index.html
+
+!application/*/.htaccess
+
+tests/mocks/database/ci_test.sqlite
+
+user_guide_src/build/*
+user_guide_src/cilexer/build/*
+user_guide_src/cilexer/dist/*
+user_guide_src/cilexer/pycilexer.egg-info/*
+/vendor/
+/scripts/backup/.env
+/scripts/cloudflare/.env
+
+# Generated local backup dumps and logs; keep directory placeholders tracked
+/backup/dumps/*
+!/backup/dumps/.gitkeep
+/backup/logs/*
+!/backup/logs/.gitkeep
+
+# Customer/runtime data stays on the server and must never enter source commits.
+/uploads/*
+!/uploads/.gitkeep
+/tmp/*
+!/tmp/.gitkeep
+/output/*
+!/output/.gitkeep
+
+# Local agent/editor/runtime state is not part of the application release.
+/.codex/
+/.agents/
+/.vscode/
+**/__pycache__/
+*.py[cod]
+
+# IDE Files
+#-------------------------
+/nbproject/
+.idea/*
+
+## Sublime Text cache files
+*.tmlanguage.cache
+*.tmPreferences.cache
+*.stTheme.cache
+*.sublime-workspace
+*.sublime-project
+/tests/tests/
+/tests/results/
+# Customer secrets: exact path only; the example and protections remain versioned.
+/config/customer.json
+# PHP restrictions are local to each server; see .user.ini.example before pulling.
+/.user.ini
+# Private event registration data is imported locally, never distributed.
+/docs/GOWESDAY*.xlsx
+
+# Runtime logs and process markers are server state, not source history.
+/wa-engine/*.log
+/wa-engine/*.pid
+
+# Server database credentials must be provisioned locally after cloning.
+/application/config/database.php
+/application/config/database copy.php

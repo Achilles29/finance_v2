@@ -1,0 +1,15 @@
+includes:
+    - phpstan-baseline.neon
+
+parameters:
+    level: 0
+    paths:
+        - ../../application
+    scanFiles:
+        - ci3-stubs.php
+    reportUnmatchedIgnoredErrors: true
+    tmpDir: %env.A4_STATIC_CACHE_DIR%
+    parallel:
+        maximumNumberOfProcesses: 1
+        minimumNumberOfJobsPerProcess: 8
+        processTimeout: 120.0

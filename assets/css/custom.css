@@ -1,0 +1,81 @@
+.btn-loading:disabled {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.btn-loading .spinner-border {
+    display: none;
+}
+
+.btn-loading.loading .spinner-border {
+    display: inline-block;
+    margin-left: 5px;
+    width: 0.9rem;
+    height: 0.9rem;
+    border-width: 2px;
+}
+
+td .btn {
+    min-width: 75px;
+    text-align: center;
+}
+
+/* Sidebar hierarchy: parent vs child */
+.menu-vertical .menu-inner > .menu-item > .menu-link {
+    font-weight: 600;
+}
+
+/* Stronger selector to override theme defaults */
+.layout-wrapper:not(.layout-horizontal) .menu-vertical .menu-inner > .menu-item > .menu-sub > .menu-item > .menu-link {
+    padding-left: 3.6rem !important;
+    padding-inline-start: 3.6rem !important;
+    font-size: 0.95rem;
+    opacity: 0.95;
+    position: relative;
+    text-indent: 0.1rem;
+}
+
+.layout-wrapper:not(.layout-horizontal) .menu-vertical .menu-inner > .menu-item > .menu-sub > .menu-item > .menu-link::before {
+    content: "";
+    position: absolute;
+    left: 1.7rem;
+    top: 50%;
+    width: 0.55rem;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.45);
+    transform: translateY(-50%);
+}
+
+.layout-wrapper:not(.layout-horizontal) .menu-vertical .menu-inner > .menu-item > .menu-sub > .menu-item > .menu-link .menu-icon {
+    margin-right: 0.5rem;
+    opacity: 0.9;
+}
+
+/* Fallback for theme variants that use generic submenu selectors */
+.menu-vertical .menu-sub .menu-link {
+    padding-left: 3.6rem !important;
+    padding-inline-start: 3.6rem !important;
+}
+
+/* Level-2 submenu (if any) */
+.menu-vertical .menu-sub .menu-sub .menu-link {
+    padding-left: 4.2rem !important;
+    padding-inline-start: 4.2rem !important;
+}
+
+/* Ensure submenu block itself is indented */
+.menu-vertical .menu-sub {
+    margin-left: 0.9rem !important;
+    padding-left: 0.55rem !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+.menu-vertical .menu-sub > .menu-item {
+    margin-left: 0.4rem !important;
+}
+
+/* Force visual offset for first-level submenu links */
+.layout-wrapper .layout-container .menu-vertical .menu-sub > .menu-item > .menu-link {
+    margin-left: 0.95rem !important;
+    border-radius: 10px !important;
+}

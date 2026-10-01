@@ -1,0 +1,128 @@
+{
+  "schema": "finance.retention-policy",
+  "schema_version": 1,
+  "status": "safe_baseline",
+  "quarantine_grace_days": 14,
+  "roots": {
+    "a5_runtime": {
+      "environment": "FINANCE_A5_RUNTIME_DIR",
+      "default": "/var/lib/finance-a5-runtime"
+    },
+    "backup_runtime": {
+      "environment": "FINANCE_BACKUP_RUNTIME_DIR",
+      "default": "/var/lib/finance-backup"
+    }
+  },
+  "filesystem_rules": [
+    {
+      "id": "a5_temporary_files",
+      "root": "a5_runtime",
+      "directory": "run",
+      "minimum_age_days": 2,
+      "retain_newest": 0,
+      "maximum_items_per_run": 100,
+      "suffixes": [".cnf", ".name", ".sql", ".out", ".err", ".log"],
+      "require_sha256_companion": false
+    },
+    {
+      "id": "a5_evidence",
+      "root": "a5_runtime",
+      "directory": "evidence",
+      "minimum_age_days": 365,
+      "retain_newest": 20,
+      "maximum_items_per_run": 25,
+      "suffixes": [".json"],
+      "require_sha256_companion": false
+    },
+    {
+      "id": "a5_prechange_backups",
+      "root": "a5_runtime",
+      "directory": "backups",
+      "minimum_age_days": 90,
+      "retain_newest": 14,
+      "maximum_items_per_run": 10,
+      "suffixes": [".sql.gz"],
+      "require_sha256_companion": true
+    },
+    {
+      "id": "regular_database_backups",
+      "root": "backup_runtime",
+      "directory": "dumps",
+      "minimum_age_days": 35,
+      "retain_newest": 14,
+      "maximum_items_per_run": 10,
+      "suffixes": [".sql.gz"],
+      "require_sha256_companion": true
+    },
+    {
+      "id": "backup_job_logs",
+      "root": "backup_runtime",
+      "directory": "logs",
+      "minimum_age_days": 30,
+      "retain_newest": 20,
+      "maximum_items_per_run": 25,
+      "suffixes": [".log"],
+      "require_sha256_companion": false
+    }
+  ],
+  "database_rules": [
+    {
+      "id": "availability_rebuild_success_detail",
+      "table": "pos_product_availability_rebuild_log",
+      "timestamp_column": "rebuilt_at",
+      "minimum_age_days": 90,
+      "predicate": "mismatch_flag = 0",
+      "action": "archive_then_batch_purge",
+      "enabled": false
+    },
+    {
+      "id": "authentication_failures",
+      "table": "auth_login_failure",
+      "timestamp_column": "failed_at",
+      "minimum_age_days": 180,
+      "predicate": "1 = 1",
+      "action": "archive_then_batch_purge",
+      "enabled": false
+    },
+    {
+      "id": "authentication_sessions",
+      "table": "auth_session_log",
+      "timestamp_column": "login_at",
+      "minimum_age_days": 365,
+      "predicate": "1 = 1",
+      "action": "archive_then_batch_purge",
+      "enabled": false
+    },
+    {
+      "id": "whatsapp_delivery_log",
+      "table": "wa_send_log",
+      "timestamp_column": "sent_at",
+      "minimum_age_days": 365,
+      "predicate": "status IN ('SENT','FAILED')",
+      "action": "archive_then_batch_purge",
+      "enabled": false
+    },
+    {
+      "id": "telegram_delivery_log",
+      "table": "tg_delivery_log",
+      "timestamp_column": "created_at",
+      "minimum_age_days": 365,
+      "predicate": "delivery_status IN ('SENT','FAILED')",
+      "action": "archive_then_batch_purge",
+      "enabled": false
+    }
+  ],
+  "never_age_delete": [
+    "uploads",
+    "database_transaction_ledgers",
+    "audit_transaction_log",
+    "inventory_movements",
+    "financial_journals",
+    "payroll_records",
+    "active_queue_rows",
+    "telegram_unknown_rows",
+    "service_credentials",
+    "device_configuration",
+    "whatsapp_session_state"
+  ]
+}

@@ -1,0 +1,55 @@
+NAMUA FINANCE - MULAI DI SINI
+Panduan singkat paket customer Linux - alpha.20, 19 September 2026
+Tidak ada tenggat waktu untuk mulai memasang. Hak paket dan kuota server tetap berlaku.
+Untuk tampilan lebih nyaman, buka MULAI-DI-SINI.html di folder yang sama.
+
+1. EKSTRAK DAN UNGGAH
+   Ekstrak ZIP lengkap. Unggah seluruh folder finance ke folder baru di server.
+   Jangan hanya mengambil TAR atau menimpa aplikasi/data lama.
+
+2. SIAPKAN SERVER (ADMIN)
+   Website HTTPS, Linux x86_64, PHP 8.1, MariaDB 10.11.
+   Root website / document root: finance/public (bukan seluruh folder finance).
+   Buat database kosong dan user database melalui panel/database manager.
+   Panel bebas, tidak wajib aaPanel. Windows belum disetujui untuk paket ini.
+
+3. PERSIAPAN SEKALI (ADMIN)
+   Buka terminal DI DALAM folder finance hasil ekstrak, lalu:
+
+   sudo sh tools/install/portable/prepare.sh
+
+   Jika terminal sudah root, hilangkan sudo. Ikuti pertanyaan akun website dan
+   alamat aplikasi. Periksa target, ketik SIAP, tunggu Persiapan berhasil.
+   Izin folder dan jadwal pendamping disiapkan otomatis. Tidak perlu memasang
+   cron satu per satu. PHP/database/website lain tidak diganti otomatis.
+
+4. LANJUT MELALUI BROWSER
+   Buka alamat aplikasi ditambah /setup.
+   Ambil kode setup dari finance/private/delivery/KODE-SETUP.txt melalui File
+   Manager atau berkas lokal. Jangan membukanya sebagai URL publik.
+   Isi URL, host/port/nama/user/password database, lalu klik:
+   Uji koneksi & database kosong.
+   Isi akun admin pertama, periksa ringkasan, lalu Pasang dan aktifkan.
+   JANGAN impor SQL manual. Pemasang membuat tabel dan mengaktifkan lisensi.
+
+5. MULAI MENGGUNAKAN
+   Setelah berhasil, klik Masuk ke Finance.
+   Konfigurasi tersimpan di finance/config/customer.json.
+   Tidak perlu mengedit application/config/config.php atau database.php.
+   Penjual memeriksa hasil pemasangan, lisensi, dan koneksi di Control.
+
+JIKA GAGAL
+- Paket belum disiapkan: admin menyelesaikan langkah 3, jangan chmod 777.
+- Database gagal: periksa isian dan gunakan database kosong. Jangan hapus data lama.
+- Paket alpha.20 tidak memakai batas pemasangan satu jam. Jika masih muncul
+  SETUP_PERMISSION_EXPIRED, Anda memakai paket lama. Minta paket terbaru dari
+  penjual; jangan menimpa folder yang sudah dipersiapkan atau berisi data.
+- Izin dicabut/paket tidak cocok/kuota penuh: hubungi penjual. Menyalin ZIP bukan
+  cara menambah server; setiap server harus diaktifkan sesuai kuota pembelian.
+- Instalasi terputus/sudah dimulai: periksa status, jangan ulang SQL atau hapus
+  journal. Hubungi penjual jika tertahan.
+
+Kode akses halaman unduh berbeda dari kode setup dan password admin.
+Jangan bagikan ZIP/password/berkas private dan config kepada publik.
+Jangan hapus panduan ini: ia bagian dari paket terverifikasi.
+Detail admin: docs/customer_single_folder_admin.md.

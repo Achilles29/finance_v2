@@ -1,0 +1,15 @@
+# ============================================================
+# Contoh crontab untuk backup otomatis Finance App
+# Edit dengan: crontab -e
+# ============================================================
+
+# Ganti /var/www/html/finance dengan path aktual di server kamu
+
+# Backup full setiap 30 menit
+*/30 * * * * /var/www/html/finance/scripts/backup/backup_full.sh >> /var/www/html/finance/backup/logs/cron.log 2>&1
+
+# Backup full setiap jam (alternatif lebih ringan)
+# 0 * * * * /var/www/html/finance/scripts/backup/backup_full.sh >> /var/www/html/finance/backup/logs/cron.log 2>&1
+
+# Health check replication setiap 5 menit
+*/5 * * * * /var/www/html/finance/scripts/replication/health_check.sh >> /var/www/html/finance/backup/logs/replication.log 2>&1

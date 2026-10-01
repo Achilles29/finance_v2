@@ -1,0 +1,12 @@
+# Include INSIDE this Finance site's server {} block (nginx / aaPanel).
+# Applies when DocumentRoot is the extracted Finance directory and URL is at /.
+# Keep these explicit locations before any broad/static application locations.
+# No PHP-FPM env[] entries are required by the local configuration contract.
+autoindex off;
+location = /config { return 404; }
+location ^~ /config/ { return 404; }
+# Also block private source/tools and executable uploads on custom vhosts.
+location ~ (^|/)[.] { return 404; }
+location ~* ^/(application|tools|sql|docs|vendor|wa-engine|backup)(/|$) { return 404; }
+location ~* ^/system/(core|database|fonts|helpers|language|libraries)(/|$) { return 404; }
+location ~* ^/(assets|uploads)/.*[.]php(?:/|$) { return 404; }

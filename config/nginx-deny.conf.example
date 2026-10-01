@@ -1,0 +1,7 @@
+# Include INSIDE the server {} block for a legacy/source Finance document root.
+# Customer packages use finance/public as document root instead.
+location = /config { return 404; }
+location ^~ /config/ {
+    autoindex off;
+    return 404;
+}

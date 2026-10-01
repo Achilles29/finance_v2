@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "database": {
+    "host": "127.0.0.1",
+    "port": 3306,
+    "socket": "",
+    "name": "REPLACE_DATABASE_NAME",
+    "user": "REPLACE_DATABASE_USER",
+    "password": "REPLACE_DATABASE_PASSWORD"
+  },
+  "base_url": "https://finance.example.com/",
+  "encryption_key": "REPLACE_WITH_RANDOM_64_HEX_CHARACTERS",
+  "runtime": {
+    "directory": "storage",
+    "session_cookie": "finance_customer_session"
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "schema": "finance.legacy-sql-disposition",
+  "schema_version": 1,
+  "source_evidence": {
+    "inventory_path": "tools/db/legacy_sql_inventory.json",
+    "inventory_sha256": "f9550c36794dc2268129965f89b0f032baa34a11315ae73ad8fd33770303e3cc",
+    "fingerprint_path": "tools/db/legacy_schema_fingerprints.json",
+    "fingerprint_sha256": "df558150d9eae1a627c6d814d0ebdfd06213a5f82ce37e1d6b0a5fff38db2fac"
+  },
+  "clean_install_coverage": {
+    "policy_path": "tools/db/clean_install_baseline_policy.json",
+    "policy_sha256": "10b356b169f75aa3c4d7949ba62ab806dd019c43d39af24557413b43618d3458",
+    "schema_path": "sql/baseline/2026-09-05_clean_install_schema.sql",
+    "schema_sha256": "92a961016e59553c1d31d9dc9084d66fc8138cb7e6467edb73d475e45c9c20b7",
+    "navigation_seed_path": "sql/2026-09-05d_a5_clean_install_reference_seed.sql",
+    "navigation_seed_sha256": "ef33bfbc5fac1c151c98854f401d2310caf4f90f4ff2bac0643c7da9efbe2a61",
+    "whatsapp_seed_path": "sql/2026-09-05e_whatsapp_safe_reference_seed.sql",
+    "whatsapp_seed_sha256": "35181edd33a89add9d99a39d3ef0e801fa92393e687928dddd3e7331ec54ab78"
+  },
+  "upgrade_contract": {
+    "automatic_source_line": "finance-managed-v1",
+    "pre_catalog_source_action": "manual_bridge_required",
+    "legacy_sql_execution": "forbidden",
+    "legacy_migration_ledger_insertion": "forbidden",
+    "managed_source_requirements": [
+      "installed_release_signature_verified",
+      "migration_ledger_exact",
+      "legacy_fingerprint_4_of_4",
+      "post_install_health_pass",
+      "verified_backup_bundle_before_apply"
+    ],
+    "sequence": [
+      "verify_target_artifact_signature",
+      "verify_runtime_compatibility",
+      "verify_source_release_receipt",
+      "validate_migration_catalog",
+      "verify_database_fingerprint_and_ledger",
+      "build_and_verify_backup_bundle",
+      "plan_managed_migrations_only",
+      "apply_managed_migrations",
+      "run_post_install_health_check",
+      "atomic_release_switch_or_rollback"
+    ]
+  },
+  "allowed_actions": ["baseline", "enroll", "replace", "retire"],
+  "records": [
+    {
+      "path": "sql/2026-08-15b_wa_report_schedule.sql",
+      "sha256": "c2c9456286add5aa7ad46111ff0f503f322e30be38a0f63c7aeea6f5de40492d",
+      "action": "baseline",
+      "automatic_execution": false,
+      "clean_install_coverage": "schema_baseline_with_runtime_safe_default",
+      "bridge_fingerprint_checks": [],
+      "successor": "2026-09-05e-whatsapp-safe-reference-seed",
+      "decision": "The historical table DDL and default insert are not replayed; clean install owns schema and the managed repeat-safe seed owns REPORT_DEFAULT and wa_session row one."
+    },
+    {
+      "path": "sql/2026-08-17e_pos_whatsapp_runtime_schema_preflight.sql",
+      "sha256": "51f964558d403247406eea996d7b7affb90ef4ea3ac448fd4d628d38c4635dc6",
+      "action": "replace",
+      "automatic_execution": false,
+      "clean_install_coverage": "schema_baseline",
+      "bridge_fingerprint_checks": [],
+      "successor": "new_narrow_managed_migration_per_domain_if_a_supported_source_lacks_state",
+      "decision": "The mixed POS and WhatsApp preflight is never replayed; future deltas must use separate managed migrations with postconditions."
+    },
+    {
+      "path": "sql/2026-09-02a_wa_report_schedule_claim_lease.sql",
+      "sha256": "5d03f860087f078686f95eb6a7f684ecbe8788401fbfa54e2d283ca4150b7c2f",
+      "action": "enroll",
+      "automatic_execution": false,
+      "clean_install_coverage": "schema_baseline",
+      "bridge_fingerprint_checks": ["wa_schedule_lease_columns"],
+      "successor": "managed_source_receipt_after_exact_fingerprint",
+      "decision": "Existing state may enter the managed source line only when the exact lease-column fingerprint passes; no historical execution claim is inserted."
+    },
+    {
+      "path": "sql/2026-09-03a_auth_login_throttle_foundation.sql",
+      "sha256": "99faa6ea7028c3461fc0e28a6c63b05aafb86635e20498f0ea6cb1c44ae994cd",
+      "action": "enroll",
+      "automatic_execution": false,
+      "clean_install_coverage": "schema_baseline",
+      "bridge_fingerprint_checks": ["auth_login_failure_table_columns", "auth_login_failure_fk"],
+      "successor": "managed_source_receipt_after_exact_fingerprint",
+      "decision": "Existing state may enter the managed source line only when table, indexes, and named foreign-key fingerprints all pass."
+    },
+    {
+      "path": "sql/2026-09-03b_auth_session_log_login_at_microsecond_compatibility.sql",
+      "sha256": "7437fe27f8cbc9cea7cc798336ff0718360e92a7fd3614650faff9158d7bfbc0",
+      "action": "enroll",
+      "automatic_execution": false,
+      "clean_install_coverage": "schema_baseline",
+      "bridge_fingerprint_checks": ["auth_session_login_at_usec"],
+      "successor": "managed_source_receipt_after_exact_fingerprint",
+      "decision": "Existing state may enter the managed source line only when the exact DATETIME(6) contract passes; delimiter SQL is not replayed."
+    },
+    {
+      "path": "sql/2026-09-04a_a3_navigation_registry_canonicalization.sql",
+      "sha256": "41eb9b7e225eb7bd849f552f447fc1efb32e0eb0c636c126ab7ef77caec22927",
+      "action": "retire",
+      "automatic_execution": false,
+      "clean_install_coverage": "schema_baseline_and_reference_seed",
+      "bridge_fingerprint_checks": [],
+      "successor": "clean_install_reference_seed_and_future_narrow_navigation_migrations",
+      "decision": "High-risk navigation reparent, update, deactivate, delete, and favorite cleanup are retired from automatic upgrade."
+    },
+    {
+      "path": "sql/2026-09-04b_a3_page_alias_registry.sql",
+      "sha256": "7d55a8abd9979f26d8c1fd5d39676f8be654816ab58ebd3e6696a3fbec3518ae",
+      "action": "enroll",
+      "automatic_execution": false,
+      "clean_install_coverage": "schema_baseline_and_reference_seed",
+      "bridge_fingerprint_checks": ["page_alias_table_columns_indexes", "page_alias_fk", "page_alias_semantic_seed", "page_alias_global_target_integrity", "page_alias_global_code_collision"],
+      "successor": "managed_source_receipt_after_exact_fingerprint",
+      "decision": "Existing alias state may enter the managed source line only after all structural and semantic fingerprints pass; the old DML is not replayed."
+    }
+  ]
+}

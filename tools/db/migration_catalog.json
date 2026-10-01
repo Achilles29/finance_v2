@@ -1,0 +1,374 @@
+{
+  "catalog_version": 1,
+  "tool_version": "1.0.0",
+  "sql_directory": "sql",
+  "catalog_policy": {
+    "active_sql_completeness": "managed_or_explicit_legacy",
+    "scan_scope": "top_level_sql_files_only",
+    "unknown_sql": "reject"
+  },
+  "classification_schema": {
+    "schema": "deployable",
+    "data": "deployable",
+    "seed": "deployable",
+    "support-repair": "manual-only"
+  },
+  "supported_policies": [
+    "clean_install",
+    "upgrade"
+  ],
+  "legacy_unmanaged_sql": [
+    "sql/2026-08-15b_wa_report_schedule.sql",
+    "sql/2026-08-17e_pos_whatsapp_runtime_schema_preflight.sql",
+    "sql/2026-09-02a_wa_report_schedule_claim_lease.sql",
+    "sql/2026-09-03a_auth_login_throttle_foundation.sql",
+    "sql/2026-09-03b_auth_session_log_login_at_microsecond_compatibility.sql",
+    "sql/2026-09-04a_a3_navigation_registry_canonicalization.sql",
+    "sql/2026-09-04b_a3_page_alias_registry.sql"
+  ],
+  "migrations": [
+    {
+      "id": "2026-09-04c-a5-schema-migration-registry-foundation",
+      "order": 2026090403,
+      "path": "sql/2026-09-04c_a5_schema_migration_registry_foundation.sql",
+      "sha256": "39dd6eff006f75a73f229a60ae2a73615d6c9e67d82f4720632431979645163e",
+      "dependencies": [],
+      "classification": "schema",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-05a-telegram-bot-foundation",
+      "order": 2026090501,
+      "path": "sql/2026-09-05a_telegram_bot_foundation.sql",
+      "sha256": "afc6494465d1f141955b23809aac91d864f12ffba35a9637703b9633fa89ae0c",
+      "dependencies": [
+        "2026-09-04c-a5-schema-migration-registry-foundation"
+      ],
+      "classification": "schema",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-05b-telegram-setup-guide",
+      "order": 2026090502,
+      "path": "sql/2026-09-05b_telegram_setup_guide.sql",
+      "sha256": "360347133206045a98a61220b6cf6064c1dc7eb63bb72c7ee9c5bcb002984d6f",
+      "dependencies": [
+        "2026-09-05a-telegram-bot-foundation"
+      ],
+      "classification": "seed",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-05c-telegram-safe-activation-default",
+      "order": 2026090503,
+      "path": "sql/2026-09-05c_telegram_safe_activation_default.sql",
+      "sha256": "9f112092e5d78cfa0c0ad08a6b6db6c53f66149b0b65980d39d875ac7a39e3b0",
+      "dependencies": [
+        "2026-09-05b-telegram-setup-guide"
+      ],
+      "classification": "seed",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-05d-a5-clean-install-reference-seed",
+      "order": 2026090404,
+      "path": "sql/2026-09-05d_a5_clean_install_reference_seed.sql",
+      "sha256": "ef33bfbc5fac1c151c98854f401d2310caf4f90f4ff2bac0643c7da9efbe2a61",
+      "dependencies": [
+        "2026-09-04c-a5-schema-migration-registry-foundation"
+      ],
+      "classification": "seed",
+      "policies": [
+        "clean_install"
+      ]
+    },
+    {
+      "id": "2026-09-05e-whatsapp-safe-reference-seed",
+      "order": 2026090405,
+      "path": "sql/2026-09-05e_whatsapp_safe_reference_seed.sql",
+      "sha256": "35181edd33a89add9d99a39d3ef0e801fa92393e687928dddd3e7331ec54ab78",
+      "dependencies": [
+        "2026-09-04c-a5-schema-migration-registry-foundation"
+      ],
+      "classification": "seed",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-06a-component-formula-version-history",
+      "order": 2026090601,
+      "path": "sql/2026-09-06a_component_formula_version_history.sql",
+      "sha256": "4a06fd36d3b432be6e683f6ba747754ecb31345a237d3f65109f4c87ca6623df",
+      "dependencies": [
+        "2026-09-04c-a5-schema-migration-registry-foundation"
+      ],
+      "classification": "schema",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-06b-component-formula-restore-action",
+      "order": 2026090602,
+      "path": "sql/2026-09-06b_component_formula_restore_action.sql",
+      "sha256": "4ddd673e61e2e97b2f094d6fc9dbe16106c9bc5d0912393072355b63abd649d3",
+      "dependencies": [
+        "2026-09-06a-component-formula-version-history"
+      ],
+      "classification": "schema",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-06c-pos-mobile-reversal-step-up",
+      "order": 2026090603,
+      "path": "sql/2026-09-06c_pos_mobile_reversal_step_up.sql",
+      "sha256": "910412ff192dd5a08295e12092e374a6a4cd3983ac3b9abc3972408745252dec",
+      "dependencies": [
+        "2026-09-04c-a5-schema-migration-registry-foundation"
+      ],
+      "classification": "schema",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-06d-pos-mobile-reprint-step-up",
+      "order": 2026090604,
+      "path": "sql/2026-09-06d_pos_mobile_reprint_step_up.sql",
+      "sha256": "075a544974b0d646573d89fcfcb9efd66513ec501402707e4815f9b8cfa32d30",
+      "dependencies": [
+        "2026-09-06c-pos-mobile-reversal-step-up"
+      ],
+      "classification": "schema",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-06e-activity-audit-foundation",
+      "order": 2026090605,
+      "path": "sql/2026-09-06e_activity_audit_foundation.sql",
+      "sha256": "c75afadeaf8a79d4736b101f4c1353ccf0423438541444f1d69a833cc99b68ce",
+      "dependencies": [
+        "2026-09-04c-a5-schema-migration-registry-foundation"
+      ],
+      "classification": "schema",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-06f-pos-mobile-cashier-close-step-up",
+      "order": 2026090606,
+      "path": "sql/2026-09-06f_pos_mobile_cashier_close_step_up.sql",
+      "sha256": "a4d98b77bf4bdce364f74817e72b5967b7090216bd701326a028710733bbf637",
+      "dependencies": [
+        "2026-09-06d-pos-mobile-reprint-step-up"
+      ],
+      "classification": "schema",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-06g-pos-mobile-reservation-refund-step-up",
+      "order": 2026090607,
+      "path": "sql/2026-09-06g_pos_mobile_reservation_refund_step_up.sql",
+      "sha256": "3ac1b4e2e2d1ebf3232b02a50ad13c74603f1750fa25d0668b5211220414bee0",
+      "dependencies": [
+        "2026-09-06f-pos-mobile-cashier-close-step-up"
+      ],
+      "classification": "schema",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-06h-roastery-label-template-studio",
+      "order": 2026090608,
+      "path": "sql/2026-09-06h_roastery_label_template_studio.sql",
+      "sha256": "d17230ae0a8e2a4676bd50a5204faf280ae4f823cc596a0ddedddd654c09f6ae",
+      "dependencies": [
+        "2026-09-04c-a5-schema-migration-registry-foundation"
+      ],
+      "classification": "schema",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-06i-a3-sidebar-task-oriented-layout",
+      "order": 2026090609,
+      "path": "sql/2026-09-06i_a3_sidebar_task_oriented_layout.sql",
+      "sha256": "f616f3da28a4915bce4d70da9aa632e8942f28ed386c361e42f6d4f01214bbbd",
+      "dependencies": [
+        "2026-09-05a-telegram-bot-foundation"
+      ],
+      "classification": "seed",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-07a-c2-c4-business-profile-license-runtime-foundation",
+      "order": 2026090701,
+      "path": "sql/2026-09-07a_c2_c4_business_profile_license_runtime_foundation.sql",
+      "sha256": "e1a698a04419740150faca1281f4b21bf848fb40bd1207f27edae10a0792eca0",
+      "dependencies": [
+        "2026-09-06i-a3-sidebar-task-oriented-layout"
+      ],
+      "classification": "schema",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-12a-roast-connect-catalog",
+      "order": 2026091201,
+      "path": "sql/2026-09-12a_roast_connect_catalog.sql",
+      "sha256": "bfef6af7479929d8fa99671b2156a65570ab67e3013d52980afec1d56c444847",
+      "dependencies": [
+        "2026-09-04c-a5-schema-migration-registry-foundation"
+      ],
+      "classification": "schema",
+      "policies": [
+        "clean_install",
+        "upgrade"
+      ]
+    },
+    {
+      "id": "2026-09-13a-finance-mutation-reporting-category",
+      "order": 2026091301,
+      "path": "sql/2026-09-13a_finance_mutation_reporting_category.sql",
+      "sha256": "42c2d3e122ff776254a8838d622fd99dacdced60d38fbc5336104772dcb975f9",
+      "dependencies": ["2026-09-04c-a5-schema-migration-registry-foundation"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-09-14a-finance-control-workspace",
+      "order": 2026091401,
+      "path": "sql/2026-09-14a_finance_control_workspace.sql",
+      "sha256": "5ba57770cdd2b4b12d67cb06acb340423ea454e60bb19234f60546adaad4567e",
+      "dependencies": ["2026-09-13a-finance-mutation-reporting-category"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-09-14b-finance-control-operations",
+      "order": 2026091402,
+      "path": "sql/2026-09-14b_finance_control_operations.sql",
+      "sha256": "9034c6db9dbea17054ff78ade67ee281d5a07f885c56a77f21a152d2e7b0f2af",
+      "dependencies": ["2026-09-14a-finance-control-workspace"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-09-14c-finance-allocation-bank-review",
+      "order": 2026091403,
+      "path": "sql/2026-09-14c_finance_allocation_bank_review.sql",
+      "sha256": "ea623937ac6456b9643d4216768744c9c4f3e45c59369d238b37f21dd7d5657d",
+      "dependencies": ["2026-09-14b-finance-control-operations"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-09-15a-finance-general-ledger",
+      "order": 2026091501,
+      "path": "sql/2026-09-15a_finance_general_ledger.sql",
+      "sha256": "03aeae127ea8431480f1553c43e5a8e2d581a453279c2ecf2dddbbb560b4c195",
+      "dependencies": ["2026-09-14c-finance-allocation-bank-review", "2026-09-06i-a3-sidebar-task-oriented-layout"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-09-15b-finance-journal-assistant",
+      "order": 2026091502,
+      "path": "sql/2026-09-15b_finance_journal_assistant.sql",
+      "sha256": "133f130b0c7286318923feacfc032e6c65eabb340eb82d510d7859b5cf5b238e",
+      "dependencies": ["2026-09-15a-finance-general-ledger"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-09-15c-application-user-guide",
+      "order": 2026091503,
+      "path": "sql/2026-09-15c_application_user_guide.sql",
+      "sha256": "a3b68fb81101fdc7fd05a60c02c283100f17fcc677aedaed64595ba122657393",
+      "dependencies": ["2026-09-06i-a3-sidebar-task-oriented-layout"],
+      "classification": "seed",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-09-16a-procurement-stock-review",
+      "order": 2026091601,
+      "path": "sql/2026-09-16a_procurement_stock_review.sql",
+      "sha256": "c09edc815f92d8d8628a29156790e9f74458a3203fef0c1670f5aaa3ef278665",
+      "dependencies": ["2026-09-04c-a5-schema-migration-registry-foundation"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-09-20a-pos-stock-commit-not-required",
+      "order": 2026092001,
+      "path": "sql/2026-09-20a_pos_stock_commit_not_required.sql",
+      "sha256": "43fc95b64cfca96e271c22e0fa08a7eb0f084a0defd4c7f44505fb0c1d52946d",
+      "dependencies": ["2026-09-06c-pos-mobile-reversal-step-up"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-09-23a-module-notifications",
+      "order": 2026092301,
+      "path": "sql/2026-09-23a_module_notifications.sql",
+      "sha256": "4eda52e6ade8be12aeb22a8a3036f3084588394f48acaadb59fab4499639cd7f",
+      "dependencies": ["2026-09-05a-telegram-bot-foundation"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-09-30a-gowes-voucher-claim",
+      "order": 2026093001,
+      "path": "sql/2026-09-30a_gowes_voucher_claim.sql",
+      "sha256": "28c51bba12b3601e8d12ca2d2dfeceaeea6350d88ba413cf2aa1f489bf1a1922",
+      "dependencies": ["2026-09-04c-a5-schema-migration-registry-foundation"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-10-01a-monthly-reporting-workspace",
+      "order": 2026100101,
+      "path": "sql/2026-10-01a_monthly_reporting_workspace.sql",
+      "sha256": "90f077e995e2e2a00dc773b24f7c1ccb2ed6c44481c6b251b6687763ac26d02f",
+      "dependencies": ["2026-09-15a-finance-general-ledger", "2026-09-06i-a3-sidebar-task-oriented-layout"],
+      "classification": "seed",
+      "policies": ["clean_install", "upgrade"]
+    }
+  ]
+}

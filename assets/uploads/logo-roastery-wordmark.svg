@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 210" role="img" aria-label="NAMUA Coffee Roastery">
+  <defs>
+    <linearGradient id="namuaGold" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#C98028"/>
+      <stop offset="1" stop-color="#E7B35C"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="url(#namuaGold)" stroke-linecap="round" stroke-width="11">
+    <path d="M151 78c0-34 26-59 59-59s59 25 59 59"/>
+    <path d="M174 78c0-21 16-36 36-36s36 15 36 36"/>
+    <path d="M199 77c0-8 5-14 11-14s11 6 11 14"/>
+  </g>
+  <text x="210" y="126" text-anchor="middle"
+        font-family="Jost, Montserrat, Arial, sans-serif"
+        font-size="44" font-weight="600" letter-spacing="14"
+        fill="#3A2419">NAMUA</text>
+  <text x="210" y="158" text-anchor="middle"
+        font-family="Jost, Montserrat, Arial, sans-serif"
+        font-size="15" font-weight="600" letter-spacing="8"
+        fill="#3A2419">COFFEE ROASTERY</text>
+</svg>

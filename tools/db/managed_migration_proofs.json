@@ -1,0 +1,18 @@
+{
+    "contract": "FINANCE_MANAGED_ADOPTION_V1",
+    "engine": "MariaDB 10.11",
+    "source": "immutable SQL on newly initialized disposable database",
+    "schemas": {
+        "fin_receipt_distribution": "9f4d4c96bcd052652845f6b8ec9d755bdf8256620613a995be316319292fae7e",
+        "fin_receipt_allocation": "46cce4967bd010c876904150d9994bd5a7c010a1e6cbefb303ff2d3a80331826",
+        "fin_plan_allocation": "3351f517cfe3c71530e0cbd719a4332096c083127bfaf6f0387b49b1cec95ea3",
+        "fin_bank_statement_row": "e6aae7e02c85da1e2a6ad1c726afe9cc390d80def666ea3872954ba3cb7f0d68",
+        "fin_gl_guard": "cf23b35f3c45b128e89ca28a295301ffd8b51c68cc4cb76016c2d8fd38443f96",
+        "fin_gl_account": "f3d76c7030e73e968f77911bd49468af909584c87136edb963f821c0189b2443",
+        "fin_gl_journal": "9d0f6d19eee2cfc0cf9e75ca8a89dd4809284f6c1ad687eca6276699c990adf2",
+        "fin_gl_line": "451b22f6e14ab101c02b20a377fe3c49cb9819c8a54477b46445445ddf16fbf4",
+        "fin_gl_mapping": "1a9a3c74c05ac4b9e080a1c9fcb744f3b1012752b6c7d8ce5a45353c0eac8530",
+        "pur_division_stock_review": "aeb8d5c814b234b8193770fe988e443c0a5110b6308f56aadb99e66ce4ffdb8e",
+        "reconciliation_columns": "7d0066e86b9e698ad3ef77f9b53ffa9aebde16e42bc7b000c5f157b031790527"
+    }
+}

@@ -1,0 +1,112 @@
+{
+  "inventory_version": 1,
+  "scope": "catalog_legacy_unmanaged_sql_exact",
+  "allowed_dispositions": ["support-repair/manual-only", "historical-unverified", "candidate-canonical"],
+  "records": [
+    {
+      "path": "sql/2026-08-15b_wa_report_schedule.sql",
+      "sha256": "c2c9456286add5aa7ad46111ff0f503f322e30be38a0f63c7aeea6f5de40492d",
+      "chronological_role": "Initial WhatsApp report schedule table and default template seed.",
+      "features": {"uses_ddl": true, "uses_dml": true, "uses_procedure": false, "uses_delimiter": false, "uses_transaction": false},
+      "referenced_objects": ["wa_report_schedule", "wa_template"],
+      "runtime_code_dependencies": [
+        {"path": "application/controllers/Whatsapp.php", "evidence": "Reads, writes, claims, and completes wa_report_schedule rows."},
+        {"path": "application/views/wa/report_schedule.php", "evidence": "Provides the schedule management user interface."}
+      ],
+      "data_risk": {"level": "medium", "reason": "Creates a runtime table and conditionally inserts a default template row."},
+      "disposition": "historical-unverified",
+      "reasons": ["Schedule DDL overlaps the later consolidated preflight.", "Template seed effects require installation-state verification."],
+      "existing_schema_probe": {"mode": "select_only", "sql": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('wa_report_schedule','wa_template') ORDER BY TABLE_NAME"}
+    },
+    {
+      "path": "sql/2026-08-17e_pos_whatsapp_runtime_schema_preflight.sql",
+      "sha256": "51f964558d403247406eea996d7b7affb90ef4ea3ac448fd4d628d38c4635dc6",
+      "chronological_role": "Consolidated POS customer and WhatsApp runtime schema preflight.",
+      "features": {"uses_ddl": true, "uses_dml": false, "uses_procedure": false, "uses_delimiter": false, "uses_transaction": true},
+      "referenced_objects": ["pos_order", "wa_session", "wa_broadcast", "wa_report_schedule", "information_schema.tables", "information_schema.columns"],
+      "runtime_code_dependencies": [
+        {"path": "application/models/Pos_model.php", "evidence": "Reads and writes pos_order customer_name."},
+        {"path": "application/models/Pos_order_monitor_model.php", "evidence": "Conditionally reads pos_order customer_name."},
+        {"path": "application/controllers/Whatsapp.php", "evidence": "Uses wa_session, wa_broadcast, and wa_report_schedule schema."},
+        {"path": "wa-engine/index.js", "evidence": "Updates wa_session runtime state."}
+      ],
+      "data_risk": {"level": "medium", "reason": "Combines unconditional POS DDL with conditional dynamic WhatsApp DDL."},
+      "disposition": "historical-unverified",
+      "reasons": ["Broad mixed-domain preflight predates the catalog.", "Schedule DDL overlaps the earlier schedule foundation."],
+      "existing_schema_probe": {"mode": "select_only", "sql": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('pos_order','wa_session','wa_broadcast','wa_report_schedule') ORDER BY TABLE_NAME"}
+    },
+    {
+      "path": "sql/2026-09-02a_wa_report_schedule_claim_lease.sql",
+      "sha256": "5d03f860087f078686f95eb6a7f684ecbe8788401fbfa54e2d283ca4150b7c2f",
+      "chronological_role": "Adds atomic claim and lease columns to WhatsApp report schedules.",
+      "features": {"uses_ddl": true, "uses_dml": false, "uses_procedure": false, "uses_delimiter": false, "uses_transaction": false},
+      "referenced_objects": ["wa_report_schedule.run_claim_token", "wa_report_schedule.run_claimed_at"],
+      "runtime_code_dependencies": [
+        {"path": "application/controllers/Whatsapp.php", "evidence": "Uses claim token and claimed timestamp for schedule lease ownership."}
+      ],
+      "data_risk": {"level": "low", "reason": "Adds nullable lease metadata columns with repeat-safe DDL."},
+      "disposition": "candidate-canonical",
+      "reasons": ["Narrow idempotent schema change has direct runtime evidence.", "Deployment history remains outside the migration ledger."],
+      "existing_schema_probe": {"mode": "select_only", "sql": "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='wa_report_schedule' AND COLUMN_NAME IN ('run_claim_token','run_claimed_at') ORDER BY ORDINAL_POSITION"}
+    },
+    {
+      "path": "sql/2026-09-03a_auth_login_throttle_foundation.sql",
+      "sha256": "99faa6ea7028c3461fc0e28a6c63b05aafb86635e20498f0ea6cb1c44ae994cd",
+      "chronological_role": "Creates append-only failed-login audit storage for throttling.",
+      "features": {"uses_ddl": true, "uses_dml": false, "uses_procedure": false, "uses_delimiter": false, "uses_transaction": false},
+      "referenced_objects": ["auth_login_failure", "auth_user"],
+      "runtime_code_dependencies": [
+        {"path": "application/models/Auth_model.php", "evidence": "Writes and queries auth_login_failure for bounded login throttling."}
+      ],
+      "data_risk": {"level": "low", "reason": "Creates an append-only audit table and foreign key without customer-data mutation."},
+      "disposition": "candidate-canonical",
+      "reasons": ["Focused repeat-safe foundation with direct authentication runtime dependency.", "Deployment history remains outside the migration ledger."],
+      "existing_schema_probe": {"mode": "select_only", "sql": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('auth_login_failure','auth_user') ORDER BY TABLE_NAME"}
+    },
+    {
+      "path": "sql/2026-09-03b_auth_session_log_login_at_microsecond_compatibility.sql",
+      "sha256": "7437fe27f8cbc9cea7cc798336ff0718360e92a7fd3614650faff9158d7bfbc0",
+      "chronological_role": "Aligns successful-login timestamps to DATETIME(6) after throttle foundation.",
+      "features": {"uses_ddl": true, "uses_dml": false, "uses_procedure": true, "uses_delimiter": true, "uses_transaction": false},
+      "referenced_objects": ["auth_session_log.login_at", "information_schema.tables", "information_schema.columns", "sp_auth_session_log_login_at_usec_20260903b"],
+      "runtime_code_dependencies": [
+        {"path": "application/models/Auth_model.php", "evidence": "Writes and compares microsecond login_at timestamps."}
+      ],
+      "data_risk": {"level": "medium", "reason": "Modifies a populated authentication timestamp column after guarded metadata checks."},
+      "disposition": "candidate-canonical",
+      "reasons": ["Whole-file delimiter execution is required.", "Guarded compatibility DDL has direct runtime evidence but no ledger history."],
+      "existing_schema_probe": {"mode": "select_only", "sql": "SELECT COLUMN_NAME,DATA_TYPE,DATETIME_PRECISION,IS_NULLABLE,COLUMN_DEFAULT,EXTRA FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='auth_session_log' AND COLUMN_NAME='login_at'"}
+    },
+    {
+      "path": "sql/2026-09-04a_a3_navigation_registry_canonicalization.sql",
+      "sha256": "41eb9b7e225eb7bd849f552f447fc1efb32e0eb0c636c126ab7ef77caec22927",
+      "chronological_role": "Canonicalizes active navigation hierarchy, links, labels, ordering, and favorites.",
+      "features": {"uses_ddl": true, "uses_dml": true, "uses_procedure": true, "uses_delimiter": true, "uses_transaction": true},
+      "referenced_objects": ["sys_menu", "sys_page", "sys_sidebar_favorite", "sp_a3_navigation_registry_assert_20260904a", "tmp_a3_menu_order"],
+      "runtime_code_dependencies": [
+        {"path": "application/models/Menu_model.php", "evidence": "Reads and mutates menu, page, and favorite registries."},
+        {"path": "application/models/Role_model.php", "evidence": "Uses page and menu registry relationships for RBAC."},
+        {"path": "application/core/MY_Controller.php", "evidence": "Builds runtime navigation and favorites from registry tables."}
+      ],
+      "data_risk": {"level": "high", "reason": "Reparents, updates, inserts, deactivates, and deletes shared navigation and favorite rows."},
+      "disposition": "historical-unverified",
+      "reasons": ["Large data canonicalization depends on pre-existing menu state.", "Preflight and postflight assertions do not establish deployment history."],
+      "existing_schema_probe": {"mode": "select_only", "sql": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('sys_menu','sys_page','sys_sidebar_favorite') ORDER BY TABLE_NAME"}
+    },
+    {
+      "path": "sql/2026-09-04b_a3_page_alias_registry.sql",
+      "sha256": "7d55a8abd9979f26d8c1fd5d39676f8be654816ab58ebd3e6696a3fbec3518ae",
+      "chronological_role": "Creates and seeds the canonical page-alias registry after navigation canonicalization.",
+      "features": {"uses_ddl": true, "uses_dml": true, "uses_procedure": true, "uses_delimiter": true, "uses_transaction": true},
+      "referenced_objects": ["sys_page_alias", "sys_page", "sp_a3_page_alias_registry_assert_20260904b"],
+      "runtime_code_dependencies": [
+        {"path": "application/core/MY_Controller.php", "evidence": "Resolves active page aliases during authorization."},
+        {"path": "application/models/Menu_model.php", "evidence": "Supplies canonical page and menu registry context."}
+      ],
+      "data_risk": {"level": "medium", "reason": "Creates a registry table and upserts authorization alias mappings."},
+      "disposition": "candidate-canonical",
+      "reasons": ["Idempotent table foundation has direct authorization runtime evidence.", "Seed adoption requires explicit verification before catalog enrollment."],
+      "existing_schema_probe": {"mode": "select_only", "sql": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('sys_page_alias','sys_page') ORDER BY TABLE_NAME"}
+    }
+  ]
+}

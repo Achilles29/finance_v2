@@ -1,0 +1,168 @@
+{
+  "schema": "finance.release-package-policy",
+  "schema_version": 2,
+  "include_roots": [
+    "application/",
+    "assets/",
+    "docs/",
+    "scripts/",
+    "sql/",
+    "system/",
+    "tools/",
+    "wa-engine/"
+  ],
+  "include_files": [
+    "MULAI-DI-SINI.html",
+    "MULAI-DI-SINI.txt",
+    "config/.htaccess",
+    "config/customer.example.json",
+    ".htaccess",
+    "README.md",
+    "app-manifest.json",
+    "composer.lock",
+    "composer.json",
+    "index.php",
+    "license.txt",
+    "readme.rst"
+  ],
+  "allow_exact": [
+    "application/cache/index.html",
+    "application/logs/index.html"
+  ],
+  "deny_exact": [
+    "config/customer.json",
+    ".user.ini",
+    "application/controllers/Audit.php",
+    "application/libraries/AuditRoadmapReader.php",
+    "docs/_NOTE.md"
+  ],
+  "deny_prefixes": [
+    ".agents/",
+    ".codex/",
+    ".git/",
+    ".vscode/",
+    "application/cache/",
+    "application/logs/",
+    "assets/uploads/",
+    "backup/",
+    "application/views/audit/",
+    "docs/2026-",
+    "docs/_NOTE",
+    "docs/_old/",
+    "output/",
+    "sql/_old/",
+    "tmp/",
+    "tools/telegram/codex_bridge/",
+    "uploads/",
+    "vendor/"
+  ],
+  "deny_segments": [
+    "/.runtime/",
+    "/.venv/",
+    "/__pycache__/",
+    "/node_modules/"
+  ],
+  "deny_basenames": [
+    ".env"
+  ],
+  "deny_suffixes": [
+    ".log",
+    ".pid",
+    ".sql.gz",
+    ".swp",
+    "_bak.php",
+    "~"
+  ],
+  "secret_scan_extensions": [
+    "php",
+    "js",
+    "py",
+    "sh",
+    "json",
+    "ini",
+    "yaml",
+    "yml",
+    "xml",
+    "sql"
+  ],
+  "secret_fixture_exceptions": [
+    {
+      "path": "tools/tests/finance_control_operations_cases.php",
+      "line": 16,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "7c9143b107bb5ee0c34748d009bd52e66e6dc10079b2bcda4ec26e12ff100522"
+    },
+    {
+      "path": "tools/tests/finance_control_operations_http_fixture.php",
+      "line": 13,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "c79a6d32648d5ae139cbadecd5de27a38ebef69cac0d1e644be73816b0283bdb"
+    },
+    {
+      "path": "tools/tests/finance_mutation_reporting_smoke.php",
+      "line": 66,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "16b39c0f006bcd922f0349411388cbd26a313ea33365f4be8c1eaa67a058be3e"
+    },
+    {
+      "path": "tools/tests/auth_division_scope_smoke.php",
+      "line": 747,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "07b53034d341a55e3819b17ee98837d6bf273531acc22638043ec567f92d21d0"
+    },
+    {
+      "path": "tools/tests/auth_division_scope_smoke.php",
+      "line": 751,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "f13ef736a855cf57579b11607d41d1205f47c96633aca0be37a0b3b7c9eb465d"
+    },
+    {
+      "path": "tools/tests/auth_login_throttle_smoke.php",
+      "line": 403,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "2c5b9f559f836e8206094a7fdb4ab05cab31f9b50ff9f3a52595774ea2f357e2"
+    },
+    {
+      "path": "tools/tests/dashboard_component_value_mismatch_smoke.php",
+      "line": 158,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "aa20a8ff55e5bbd7347771f1e4a60f435e78d140b4bfa31ad41a40b7ffd0bf20"
+    },
+    {
+      "path": "tools/tests/pos_mobile_authorization_smoke.php",
+      "line": 944,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "1f179d7ef2cad842c2688bcb5258c6fd7a262c5c32e5494686546a09003678a4"
+    },
+    {
+      "path": "tools/tests/pos_mobile_authorization_smoke.php",
+      "line": 998,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "64210779c46969ef161aeead7c5c2b19e8c9abfee44755230cbdf80864b1a5e6"
+    },
+    {
+      "path": "tools/tests/pos_mobile_authorization_smoke.php",
+      "line": 1076,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "1a96ca824845731cb54fd13e76a7b0e8ef935c14d9a9c11d723cba16e129a923"
+    },
+    {
+      "path": "tools/tests/pos_mobile_device_binding_recovery_smoke.php",
+      "line": 247,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "125d1d4dfd3243335e987cfe322999b56830a84a5c11e44f210f148c9c9f57dd"
+    },
+    {
+      "path": "tools/tests/pos_mobile_device_binding_recovery_smoke.php",
+      "line": 248,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "e8583a37cf665b6f53dadc2294fde0a64669b08b7839dd10eaeeec249770b4c9"
+    },
+    {
+      "path": "tools/tests/pos_mobile_device_binding_recovery_smoke.php",
+      "line": 283,
+      "category": "HARDCODED_DB_CREDENTIAL",
+      "sha256": "3fbe00dbcdc38b986a3bfde0ebe869e31c4021ba82f13825c626b50f7317c7ae"
+    }
+  ]
+}

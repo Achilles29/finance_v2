@@ -1,0 +1,57 @@
+{
+  "agent_name": "POS-PRINTER-AGENT-01",
+  "retry_seconds": 10,
+  "print_retry_count": 2,
+  "log_file": "./agent.log",
+  "api": {
+    "enabled": true,
+    "base_url": "http://localhost/finance",
+    "endpoint": "/pos/printers/bootstrap",
+    "key": "",
+    "key_query_param": "key",
+    "agent_name_param": "agent_name",
+    "refresh_seconds": 30,
+    "timeout_seconds": 8
+  },
+  "logo": {
+    "mode": "esc_star",
+    "threshold": 180,
+    "scale": 1.5,
+    "max_height_dots": 160,
+    "fetch_timeout_seconds": 10
+  },
+  "printers": [
+    {
+      "lokasi": "RPP02",
+      "printer_code": "RPP02",
+      "printer_name": "KASIR",
+      "mac_address": "DC0D30D52A33",
+      "python_port": 3000,
+      "paper_width_mm": 80
+    },
+    {
+      "lokasi": "EP5802AI",
+      "printer_code": "EP5802AI",
+      "printer_name": "BAR",
+      "mac_address": "86677A299143",
+      "python_port": 3001,
+      "paper_width_mm": 58
+    },
+    {
+      "lokasi": "RPP02N",
+      "printer_code": "RPP02N",
+      "printer_name": "KITCHEN",
+      "mac_address": "86677A7B9914",
+      "python_port": 3002,
+      "paper_width_mm": 80
+    },
+    {
+      "lokasi": "EP8003AI",
+      "printer_code": "EP8003AI",
+      "printer_name": "CHECKER",
+      "mac_address": "102233E45439",
+      "python_port": 3003,
+      "paper_width_mm": 58
+    }
+  ]
+}

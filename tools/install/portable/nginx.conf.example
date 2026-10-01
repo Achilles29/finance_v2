@@ -1,0 +1,16 @@
+# Inside the customer's HTTPS server block. Replace paths/socket with LOCAL values.
+root /absolute/path/finance/public;
+index index.php;
+autoindex off;
+location ~ (^|/)\. { return 404; }
+# Registered application routes, never files under the private system/ source tree.
+location ~ ^/system/(license|business-profile|feature-access|activity-audit|roast-connect(?:/save|/token)?)$ { rewrite ^ /index.php last; }
+location ~* ^/(config|private|storage|installer|application|system|tools|sql|vendor)(/|$) { return 404; }
+location / { try_files $uri $uri/ /index.php?$query_string; }
+location = /index.php {
+    include fastcgi_params;
+    fastcgi_param HTTPS $https if_not_empty;
+    fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+    fastcgi_pass unix:/run/php/finance-web.sock;
+}
+location ~* \.(php[0-9]?|phtml|phar)(/|$) { return 404; }

@@ -1,0 +1,5 @@
+; Local server configuration. Copy to .user.ini and replace the example path.
+; Do not commit .user.ini. Do not use "/" or disable open_basedir as a workaround.
+; Source/master layout (the current server uses /www/wwwroot/finance/):
+open_basedir=/ABSOLUTE/PATH/TO/finance/:/tmp/
+; Customer packages use public/ as document root and the installer runtime policy.

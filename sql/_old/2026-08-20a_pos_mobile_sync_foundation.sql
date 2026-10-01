@@ -1,0 +1,43 @@
+CREATE TABLE IF NOT EXISTS pos_mobile_sync_event (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  client_event_id VARCHAR(80) NOT NULL,
+  local_uuid VARCHAR(80) NOT NULL,
+  event_type VARCHAR(40) NOT NULL,
+  event_status VARCHAR(24) NOT NULL DEFAULT 'PENDING',
+  server_order_id BIGINT UNSIGNED NULL,
+  request_json LONGTEXT NULL,
+  response_json LONGTEXT NULL,
+  error_message TEXT NULL,
+  requested_at DATETIME NULL,
+  processed_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_pos_mobile_sync_event_client_event (client_event_id),
+  KEY idx_pos_mobile_sync_event_local_uuid (local_uuid),
+  KEY idx_pos_mobile_sync_event_status (event_status),
+  KEY idx_pos_mobile_sync_event_server_order (server_order_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pos_mobile_auth_token (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  token_hash CHAR(64) NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  employee_id BIGINT UNSIGNED NULL,
+  terminal_device_key VARCHAR(120) NULL,
+  device_label VARCHAR(160) NULL,
+  issued_at DATETIME NOT NULL,
+  expires_at DATETIME NOT NULL,
+  last_seen_at DATETIME NULL,
+  revoked_at DATETIME NULL,
+  ip_address VARCHAR(64) NULL,
+  user_agent VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_pos_mobile_auth_token_hash (token_hash),
+  KEY idx_pos_mobile_auth_token_user (user_id),
+  KEY idx_pos_mobile_auth_token_employee (employee_id),
+  KEY idx_pos_mobile_auth_token_device (terminal_device_key),
+  KEY idx_pos_mobile_auth_token_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

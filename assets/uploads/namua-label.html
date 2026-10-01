@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Namua Coffee Roastery — Label "Lembayung"</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,300;1,600&family=DM+Sans:opsz,wght@9..40,200;9..40,300;9..40,400&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0e0e0e;
+  min-height: 100vh;
+  padding: 60px 50px 100px;
+}
+
+.page-header {
+  color: rgba(255,243,220,0.28);
+  font-size: 9px;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  margin-bottom: 60px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 200;
+}
+
+.section-title {
+  color: rgba(255,243,220,0.2);
+  font-size: 8px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 200;
+  margin-bottom: 32px;
+  margin-top: 80px;
+}
+
+.row {
+  display: flex;
+  gap: 50px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+/* ——— LABEL BASE ——— */
+.label {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 10px 50px rgba(0,0,0,0.6);
+}
+
+.s200 { width: 210px; height: 315px; }
+.s500 { width: 262px; height: 393px; }
+.s1kg { width: 314px; height: 471px; }
+
+/* Gradient background */
+.bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    140deg,
+    #4A0C0C 0%,
+    #6B1212 18%,
+    var(--accent, #D4872A) 52%,
+    #EDD49A 75%,
+    #FFF3DC 100%
+  );
+}
+
+.bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 72% 18%,
+    rgba(255,243,220,0.22) 0%,
+    transparent 52%
+  );
+}
+
+.bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 20% 88%,
+    rgba(80,10,10,0.55) 0%,
+    transparent 55%
+  );
+}
+
+/* Edge vignette */
+.vign {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 55px rgba(45,4,4,0.38);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Oval frame outer */
+.oval {
+  position: absolute;
+  top: 5%;
+  left: 9%;
+  right: 9%;
+  bottom: 33%;
+  border: 1px solid rgba(255,243,220,0.38);
+  border-radius: 50%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Oval frame inner */
+.oval-in {
+  position: absolute;
+  top: calc(5% + 5px);
+  left: calc(9% + 5px);
+  right: calc(9% + 5px);
+  bottom: calc(33% + 5px);
+  border: 0.5px solid rgba(255,243,220,0.14);
+  border-radius: 50%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Content layer */
+.content {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.top-pad { flex: 0 0 17%; }
+
+.name {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 700;
+  color: #FFF3DC;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  line-height: 1.06;
+  text-shadow: 0 2px 28px rgba(50,4,4,0.95);
+}
+.s200 .name { font-size: 18px; }
+.s500 .name { font-size: 23px; }
+.s1kg .name { font-size: 27px; }
+
+.proc {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 200;
+  color: rgba(255,243,220,0.62);
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  margin-top: 8px;
+  text-align: center;
+}
+.s200 .proc { font-size: 6px; }
+.s500 .proc { font-size: 7.5px; }
+.s1kg .proc { font-size: 8.5px; }
+
+.hr {
+  width: 26px;
+  height: 0.5px;
+  background: rgba(255,243,220,0.3);
+  margin: 11px 0;
+  flex-shrink: 0;
+}
+
+.notes {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 200;
+  font-style: italic;
+  color: rgba(255,243,220,0.58);
+  text-align: center;
+  letter-spacing: 0.5px;
+  line-height: 1.65;
+}
+.s200 .notes { font-size: 6.5px; }
+.s500 .notes { font-size: 8px; }
+.s1kg .notes { font-size: 9px; }
+
+.sp { flex: 1; }
+
+.bot {
+  width: 100%;
+  flex: 0 0 33%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 10% 6%;
+}
+
+.bot-line {
+  width: 100%;
+  height: 0.5px;
+  background: rgba(255,243,220,0.18);
+  margin-bottom: 9px;
+}
+
+.bot-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.brand {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 300;
+  font-style: italic;
+  color: rgba(255,243,220,0.9);
+  letter-spacing: 2px;
+}
+.s200 .brand { font-size: 14px; }
+.s500 .brand { font-size: 17px; }
+.s1kg .brand { font-size: 20px; }
+
+.wgt {
+  font-family: 'Space Mono', monospace;
+  color: rgba(255,243,220,0.68);
+  border: 0.5px solid rgba(255,243,220,0.3);
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+.s200 .wgt { font-size: 6px; }
+.s500 .wgt { font-size: 7.5px; }
+.s1kg .wgt { font-size: 8.5px; }
+
+.bot-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 5px;
+}
+
+.origin {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 200;
+  color: rgba(255,243,220,0.35);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+.s200 .origin { font-size: 5px; }
+.s500 .origin { font-size: 6px; }
+.s1kg .origin { font-size: 7px; }
+
+.tag {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 200;
+  color: rgba(255,243,220,0.22);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: right;
+}
+.s200 .tag { font-size: 4px; }
+.s500 .tag { font-size: 5px; }
+.s1kg .tag { font-size: 5.5px; }
+
+/* ——— COLOUR VARIANTS ——— */
+.nat  { --accent: #D4872A; }
+.hon  { --accent: #D4A020; }
+.ana  { --accent: #8B2252; }
+.wash { --accent: #286B7A; }
+
+.vcap {
+  color: rgba(255,243,220,0.25);
+  font-size: 8.5px;
+  text-align: center;
+  margin-top: 14px;
+  letter-spacing: 2.5px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 200;
+  text-transform: uppercase;
+}
+
+/* ——— POSTER ——— */
+.poster {
+  position: relative;
+  width: 490px;
+  height: 700px;
+  overflow: hidden;
+  box-shadow: 0 16px 80px rgba(0,0,0,0.7);
+  margin-top: 40px;
+}
+
+.poster-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    140deg,
+    #4A0C0C 0%,
+    #6B1212 14%,
+    #D4872A 50%,
+    #EDD49A 72%,
+    #FFF3DC 100%
+  );
+}
+.poster-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 70% 20%, rgba(255,243,220,0.18) 0%, transparent 50%);
+}
+.poster-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 18% 85%, rgba(55,5,5,0.55) 0%, transparent 52%);
+}
+
+.poster-vign {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 110px rgba(40,4,4,0.42);
+  z-index: 1;
+}
+
+.poster-oval {
+  position: absolute;
+  top: 7%;
+  left: 10%;
+  right: 10%;
+  bottom: 8%;
+  border: 1.5px solid rgba(255,243,220,0.3);
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.poster-oval-in {
+  position: absolute;
+  top: calc(7% + 7px);
+  left: calc(10% + 7px);
+  right: calc(10% + 7px);
+  bottom: calc(8% + 7px);
+  border: 0.5px solid rgba(255,243,220,0.12);
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.poster-content {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.poster-sup {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 200;
+  font-size: 8px;
+  color: rgba(255,243,220,0.4);
+  letter-spacing: 7px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.poster-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 300;
+  font-style: italic;
+  font-size: 80px;
+  color: #FFF3DC;
+  letter-spacing: 12px;
+  text-align: center;
+  text-shadow: 0 4px 50px rgba(50,4,4,0.95);
+  line-height: 1;
+}
+
+.poster-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 200;
+  font-size: 10px;
+  color: rgba(255,243,220,0.5);
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  margin-top: 16px;
+}
+
+.poster-tag {
+  position: absolute;
+  bottom: 7%;
+  left: 0; right: 0;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 200;
+  font-size: 7px;
+  color: rgba(255,243,220,0.25);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  z-index: 3;
+}
+
+/* ——— NOTES ——— */
+.print-note {
+  margin-top: 80px;
+  padding: 24px 28px;
+  border: 0.5px solid rgba(255,243,220,0.1);
+  border-radius: 4px;
+  max-width: 700px;
+}
+
+.print-note p {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 200;
+  font-size: 10px;
+  color: rgba(255,243,220,0.35);
+  letter-spacing: 1.5px;
+  line-height: 2;
+  text-transform: uppercase;
+}
+
+.print-note strong {
+  color: rgba(255,243,220,0.55);
+  font-weight: 300;
+}
+
+</style>
+</head>
+<body>
+
+<div class="page-header">Namua Coffee Roastery &mdash; Label System &ldquo;Lembayung&rdquo; &mdash; v1.0</div>
+
+<!-- SECTION 1: SIZE VARIANTS -->
+<div class="section-title">Ukuran Label &mdash; Gayo Arabica &middot; Natural Process</div>
+
+<div class="row">
+
+  <div class="label s200 nat">
+    <div class="bg"></div>
+    <div class="vign"></div>
+    <div class="oval"></div>
+    <div class="oval-in"></div>
+    <div class="content">
+      <div class="top-pad"></div>
+      <div class="name">Gayo<br>Arabica</div>
+      <div class="proc">Natural Process</div>
+      <div class="hr"></div>
+      <div class="notes">Dark Chocolate<br>Caramel &middot; Brown Sugar</div>
+      <div class="sp"></div>
+      <div class="bot">
+        <div class="bot-line"></div>
+        <div class="bot-main">
+          <span class="brand">namua</span>
+          <span class="wgt">200 g</span>
+        </div>
+        <div class="bot-detail">
+          <span class="origin">Gayo &middot; Aceh</span>
+          <span class="tag">From Soil To Cup</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="label s500 nat">
+    <div class="bg"></div>
+    <div class="vign"></div>
+    <div class="oval"></div>
+    <div class="oval-in"></div>
+    <div class="content">
+      <div class="top-pad"></div>
+      <div class="name">Gayo<br>Arabica</div>
+      <div class="proc">Natural Process</div>
+      <div class="hr"></div>
+      <div class="notes">Dark Chocolate<br>Caramel &middot; Brown Sugar</div>
+      <div class="sp"></div>
+      <div class="bot">
+        <div class="bot-line"></div>
+        <div class="bot-main">
+          <span class="brand">namua</span>
+          <span class="wgt">500 g</span>
+        </div>
+        <div class="bot-detail">
+          <span class="origin">Gayo &middot; Aceh &middot; Arabica</span>
+          <span class="tag">From Soil To Cup</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="label s1kg nat">
+    <div class="bg"></div>
+    <div class="vign"></div>
+    <div class="oval"></div>
+    <div class="oval-in"></div>
+    <div class="content">
+      <div class="top-pad"></div>
+      <div class="name">Gayo<br>Arabica</div>
+      <div class="proc">Natural Process</div>
+      <div class="hr"></div>
+      <div class="notes">Dark Chocolate &middot; Caramel<br>Brown Sugar &middot; Mild Earthy</div>
+      <div class="sp"></div>
+      <div class="bot">
+        <div class="bot-line"></div>
+        <div class="bot-main">
+          <span class="brand">namua</span>
+          <span class="wgt">1 kg</span>
+        </div>
+        <div class="bot-detail">
+          <span class="origin">Gayo &middot; Aceh &middot; Arabica &middot; Bourbon</span>
+          <span class="tag">From Soil To Cup</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SECTION 2: COLOUR VARIANTS -->
+<div class="section-title">Varian Warna &mdash; per Jenis Proses (500g)</div>
+
+<div class="row" style="align-items:flex-start;">
+
+  <div>
+    <div class="label s500 nat">
+      <div class="bg"></div>
+      <div class="vign"></div>
+      <div class="oval"></div>
+      <div class="oval-in"></div>
+      <div class="content">
+        <div class="top-pad"></div>
+        <div class="name">Gayo<br>Arabica</div>
+        <div class="proc">Natural Process</div>
+        <div class="hr"></div>
+        <div class="notes">Chocolate &middot; Caramel<br>Brown Sugar</div>
+        <div class="sp"></div>
+        <div class="bot">
+          <div class="bot-line"></div>
+          <div class="bot-main">
+            <span class="brand">namua</span>
+            <span class="wgt">500 g</span>
+          </div>
+          <div class="bot-detail">
+            <span class="origin">Gayo &middot; Aceh</span>
+            <span class="tag">Natural</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="vcap">Natural &mdash; Amber</div>
+  </div>
+
+  <div>
+    <div class="label s500 hon">
+      <div class="bg"></div>
+      <div class="vign"></div>
+      <div class="oval"></div>
+      <div class="oval-in"></div>
+      <div class="content">
+        <div class="top-pad"></div>
+        <div class="name">Flores<br>Bajawa</div>
+        <div class="proc">Honey Process</div>
+        <div class="hr"></div>
+        <div class="notes">Honey &middot; Stone Fruit<br>Jasmine</div>
+        <div class="sp"></div>
+        <div class="bot">
+          <div class="bot-line"></div>
+          <div class="bot-main">
+            <span class="brand">namua</span>
+            <span class="wgt">500 g</span>
+          </div>
+          <div class="bot-detail">
+            <span class="origin">Flores &middot; NTT</span>
+            <span class="tag">Honey</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="vcap">Honey &mdash; Golden</div>
+  </div>
+
+  <div>
+    <div class="label s500 ana">
+      <div class="bg"></div>
+      <div class="vign"></div>
+      <div class="oval"></div>
+      <div class="oval-in"></div>
+      <div class="content">
+        <div class="top-pad"></div>
+        <div class="name">Java<br>Preanger</div>
+        <div class="proc">Anaerob Wine</div>
+        <div class="hr"></div>
+        <div class="notes">Red Wine &middot; Blackberry<br>Dark Plum</div>
+        <div class="sp"></div>
+        <div class="bot">
+          <div class="bot-line"></div>
+          <div class="bot-main">
+            <span class="brand">namua</span>
+            <span class="wgt">500 g</span>
+          </div>
+          <div class="bot-detail">
+            <span class="origin">Preanger &middot; Jawa Barat</span>
+            <span class="tag">Anaerob</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="vcap">Anaerob &mdash; Burgundy</div>
+  </div>
+
+  <div>
+    <div class="label s500 wash">
+      <div class="bg"></div>
+      <div class="vign"></div>
+      <div class="oval"></div>
+      <div class="oval-in"></div>
+      <div class="content">
+        <div class="top-pad"></div>
+        <div class="name">Toraja<br>Arabica</div>
+        <div class="proc">Washed Process</div>
+        <div class="hr"></div>
+        <div class="notes">Green Apple &middot; Citrus<br>Clean &amp; Bright</div>
+        <div class="sp"></div>
+        <div class="bot">
+          <div class="bot-line"></div>
+          <div class="bot-main">
+            <span class="brand">namua</span>
+            <span class="wgt">500 g</span>
+          </div>
+          <div class="bot-detail">
+            <span class="origin">Toraja &middot; Sulawesi</span>
+            <span class="tag">Washed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="vcap">Washed &mdash; Teal</div>
+  </div>
+
+</div>
+
+<!-- SECTION 3: WALL POSTER -->
+<div class="section-title">Wall Art / Brand Poster &mdash; A2/A3</div>
+
+<div class="poster">
+  <div class="poster-bg"></div>
+  <div class="poster-vign"></div>
+  <div class="poster-oval"></div>
+  <div class="poster-oval-in"></div>
+  <div class="poster-content">
+    <div class="poster-sup">Est. 2024</div>
+    <div class="poster-name">namua</div>
+    <div class="poster-sub">Coffee Roastery</div>
+  </div>
+  <div class="poster-tag">From Soil &middot; To Sip &middot; To Soul</div>
+</div>
+
+<!-- PRINT NOTES -->
+<div class="print-note">
+  <p>
+    <strong>Ukuran cetak:</strong> 200g = 7 &times; 10.5 cm &nbsp;&middot;&nbsp; 500g = 8.7 &times; 13.1 cm &nbsp;&middot;&nbsp; 1kg = 10.5 &times; 15.7 cm<br><br>
+    <strong>Font (Google Fonts, gratis):</strong> Cormorant Garamond &middot; DM Sans &middot; Space Mono<br><br>
+    <strong>Warna sistem:</strong><br>
+    Maroon : #6B1212 &nbsp;&middot;&nbsp; Natural/Amber : #D4872A &nbsp;&middot;&nbsp; Honey/Gold : #D4A020<br>
+    Anaerob/Burgundy : #8B2252 &nbsp;&middot;&nbsp; Washed/Teal : #286B7A &nbsp;&middot;&nbsp; Cream : #FFF3DC<br><br>
+    <strong>Cara cetak:</strong> Buka di browser &rarr; Screenshot atau print ke PDF &rarr; Cetak di kertas stiker glossy/matte.<br>
+    Atau bawa spec warna + font ini ke Canva/Figma untuk file print-ready 300dpi.<br><br>
+    <strong>Motif oval:</strong> Referensi dari bentuk biji kopi pada logo Namua + bingkai oval pada fasad.
+  </p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,33 @@
+<?php
+declare(strict_types=1);
+if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
+$root=dirname(__DIR__,2);$n=0;$check=static function($yes,$label)use(&$n){if(!$yes)throw new RuntimeException('FAIL '.$label);$n++;echo 'PASS '.$label.PHP_EOL;};
+$read=static fn($f)=>file_get_contents($root.'/'.$f);
+$model=$read('application/models/Finance_control_operation_model.php');$shared=$read('application/libraries/Finance_settlement_control.php');$controller=$read('application/controllers/Finance_insights.php');$view=$read('application/views/finance/control_operations.php');
+foreach(['save_receipt','void_receipt','save_charge','link_plan','unlink_plan','save_policy','request_approval','review_approval','upload_evidence'] as $method)$check(str_contains($model,'function '.$method.'('),'named operation '.$method);
+$check(str_contains($model,'receipt_opening_amount')&&str_contains($model,"'receipt_mode'=>1"),'legacy confirmation preserved as explicit opening');
+$check(str_contains($model,"'identity_hash'=>hash('sha256',json_encode([$".'doc,$line]'),'document and line identity, not category uniqueness');
+$check(str_contains($shared,'settlement_charge_id=?')&&str_contains($shared,'self::effective()'),'cross-module effective charge duplicate guard');
+$check(str_contains($shared,"self::consume_approval($".'db,\'POST_CHARGE\'')&&str_contains($read('application/models/Finance_insight_model.php'),"consume_approval($".'this->db,\'VOID_ADJUSTMENT\''),'posting and VOID approvals inside existing transactions');
+$check(str_contains($shared,"'CONSUMED'")&&str_contains($shared,'payload_hash=?')&&str_contains($model,'hash_equals($before[\'payload_hash\'],$snap[\'hash\'])'),'approval consumed once and stale payload denied');
+$check(str_contains($model,"$".'actor===(int)$before[\'requested_by\']')&&str_contains($model,"$".'actor===$snap[\'maker\']'),'requester and maker cannot self approve');
+foreach(['finance.control.settings','finance.control.approve'] as $page)$check(str_contains($controller,"require_permission('$page','edit')"),'separate privileged permission '.$page);
+$check(str_contains($controller,'evidence_upload')&&str_contains($controller,'hash_equals($expected,$provided)'),'evidence requires scoped CSRF');
+$check(str_contains($controller,'Content-Disposition: attachment')&&str_contains($controller,'nosniff')&&str_contains($controller,'private, no-store'),'proof download forced attachment/private/nosniff');
+$check(str_contains($model,'LIMIT 25 OFFSET')&&!str_contains($shared,'LIMIT 200'),'whole history bounded pagination');
+$check(str_contains($view,"'plan-allocate':'plan-link'")&&str_contains($view,"$".'plan[\'actual\']')&&str_contains($view,"$".'plan[\'remaining\']'),'planned actual remaining UI with legacy fallback');
+$sqlPath='sql/2026-09-14b_finance_control_operations.sql';$sql=$read($sqlPath);
+$check(!preg_match('/\b(?:UPDATE|DELETE\s+FROM)\s+(?:pos_|fin_company_account|fin_account_mutation_log)/i',$sql),'migration no transactional repair/backfill');
+$check(str_contains($sql,'approval_enabled TINYINT NOT NULL DEFAULT 0')&&str_contains($sql,'INSERT IGNORE INTO fin_control_policy'),'approval stays off and existing policy not overwritten');
+$catalog=json_decode($read('tools/db/migration_catalog.json'),true);$m=array_column($catalog['migrations'],null,'id')['2026-09-14b-finance-control-operations'];
+$check($m['sha256']===hash_file('sha256',$root.'/'.$sqlPath)&&$m['dependencies']===['2026-09-14a-finance-control-workspace'],'exact migration hash/dependency');
+$profile=json_decode($read('tools/release/customer_clean_profile.json'),true);$manifest=json_decode($read('app-manifest.json'),true);
+$check($profile['profile_version']===11&&$profile['sql_sha256'][$sqlPath]===$m['sha256'],'versioned clean profile retains registered SQL');
+$check($manifest['packaging']['profiles'][0]['rules_sha256']===hash_file('sha256',$root.'/tools/release/customer_clean_profile.json'),'manifest binds new profile content');
+foreach(['application/models/Finance_control_operation_model.php','application/libraries/Finance_control_evidence.php','application/views/finance/control_operations.php','assets/js/finance-control-operations.js','assets/js/finance-settlement-picker.js'] as $file)$check(in_array($file,$profile['code_files'],true),'runtime allowlisted '.$file);
+define('BASEPATH',$root.'/system/');define('FCPATH',$root.'/');require $root.'/application/libraries/Finance_control_evidence.php';
+putenv('FINANCE_CONTROL_EVIDENCE_DIR='.$root.'/uploads/finance-proof');try{Finance_control_evidence::directory();$rejected=false;}catch(RuntimeException $e){$rejected=true;}$check($rejected,'private storage cannot be inside webroot');
+putenv('FINANCE_CONTROL_EVIDENCE_DIR=/tmp/../finance-proof');try{Finance_control_evidence::directory();$rejected=false;}catch(RuntimeException $e){$rejected=true;}$check($rejected,'storage rejects parent traversal');putenv('FINANCE_CONTROL_EVIDENCE_DIR');
+try{Finance_control_evidence::download_path(['storage_name'=>'../secret']);$rejected=false;}catch(RuntimeException $e){$rejected=true;}$check($rejected,'download rejects path traversal');
+try{Finance_control_evidence::inspect_upload(['error'=>UPLOAD_ERR_OK,'tmp_name'=>__FILE__]);$rejected=false;}catch(RuntimeException $e){$rejected=true;}$check($rejected,'local file cannot masquerade as HTTP upload');
+echo 'Finance operations contract '.$n.' PASS. No application DB accessed.'.PHP_EOL;

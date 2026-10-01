@@ -1,0 +1,63 @@
+{
+  "schema": "finance.runtime-compatibility",
+  "schema_version": 1,
+  "release_line": "a5-staging-2026-09",
+  "status": "staging_baseline",
+  "runtimes": {
+    "php": {
+      "minimum": "8.1.0",
+      "maximum_exclusive": "8.2.0",
+      "composer_constraint": ">=8.1 <8.2",
+      "staging_tested": "8.1.32",
+      "required_extensions": [
+        "mysqli",
+        "mbstring",
+        "curl",
+        "zip",
+        "xml",
+        "openssl",
+        "sodium",
+        "session",
+        "json"
+      ],
+      "feature_extensions": {
+        "whatsapp_file_mime": ["fileinfo"]
+      }
+    },
+    "mariadb": {
+      "minimum": "10.11.0",
+      "maximum_exclusive": "10.12.0",
+      "staging_tested": "10.11.10"
+    },
+    "node": {
+      "minimum": "20.0.0",
+      "maximum_exclusive": "21.0.0",
+      "staging_tested": "20.20.2",
+      "scope": "wa-engine"
+    },
+    "npm": {
+      "minimum": "10.0.0",
+      "maximum_exclusive": "11.0.0",
+      "staging_tested": "10.8.2",
+      "scope": "wa-engine build"
+    },
+    "python": {
+      "minimum": "3.10.0",
+      "maximum_exclusive": "3.11.0",
+      "staging_tested": "3.10.12",
+      "scope": "POS Printer Agent"
+    },
+    "composer": {
+      "minimum": "2.0.0",
+      "maximum_exclusive": "3.0.0",
+      "recommended_minimum": "2.2.0",
+      "staging_tested": "2.0.14",
+      "scope": "build only"
+    }
+  },
+  "dependency_locks": [
+    "composer.lock",
+    "wa-engine/package-lock.json",
+    "tools/pos_printer_agent/requirements.txt"
+  ]
+}

@@ -1,0 +1,22 @@
+# Template only: review paths/PHP and copy as root after the first accepted activation.
+# /opt/finance/current and its resolved release MUST be root-owned, not writable by PHP-FPM.
+[Unit]
+Description=Finance Control license synchronization (audit-only)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/bin/php /opt/finance/current/tools/licensing/finance_license.php poll --private-dir=/var/lib/finance/customer-a/license/private --public-dir=/var/lib/finance/customer-a/license/public --web-group=www
+TimeoutStartSec=40
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/finance/customer-a/license/private /var/lib/finance/customer-a/license/public
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+StandardOutput=journal
+StandardError=journal

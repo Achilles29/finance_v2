@@ -1,0 +1,567 @@
+﻿/* ============================================================
+   Finance App — Typography & Component System
+   v2 — Materio identity: Plus Jakarta Sans, bold, spacious, warm
+   ============================================================
+
+   DESIGN INTENT
+   ─────────────
+   Core (Tabler)   → compact, system-font, flat, table-dense
+   Finance (Materio) → Plus Jakarta Sans, heavier weights, card-first,
+                       warm cream/red palette, clear visual hierarchy
+
+   Load order: core.css → theme-custom.css → THIS FILE
+   ============================================================ */
+
+
+/* ============================================================
+   §1  GLOBAL TYPOGRAPHY
+   ============================================================ */
+
+:root {
+  /* --- Finance type tokens --- */
+  --fin-font: 'Plus Jakarta Sans', 'Segoe UI', Tahoma, sans-serif;
+  --fin-body-sz: 0.9375rem;
+  /* 15px */
+  --fin-body-wt: 400;
+  --fin-emph-wt: 500;
+  /* inline emphasis */
+  --fin-strong-wt: 600;
+  /* strong/bold body */
+  --fin-label-sz: 0.8125rem;
+  /* 13px — table headers, field labels */
+  --fin-label-wt: 700;
+  --fin-small-sz: 0.75rem;
+  /* 12px — badges, helper text */
+  --fin-lh: 1.6;
+  /* comfortable line-height */
+
+  /* --- Heading tokens --- */
+  --fin-h4-sz: 1.25rem;
+  /* 20px — page title */
+  --fin-h4-wt: 800;
+  --fin-h5-sz: 1.0rem;
+  /* 16px — card/section title */
+  --fin-h5-wt: 700;
+  --fin-h6-sz: 0.875rem;
+  /* 14px — sub-section label */
+  --fin-h6-wt: 700;
+  --fin-head-color: #34282c;
+  --fin-muted-color: #897a75;
+
+  /* --- Spacing & shape --- */
+  --fin-card-radius: 12px;
+  --fin-card-shadow: 0 2px 10px rgba(67, 60, 64, 0.10),
+    0 0 1px rgba(67, 60, 64, 0.06);
+  --fin-table-pad-x: 1rem;
+  --fin-table-pad-y: 0.65rem;
+  --fin-btn-height: 32px;
+  --fin-btn-icon-sz: 30px;
+}
+
+/* Apply font globally */
+body,
+.content-wrapper,
+.layout-page {
+  font-family: var(--fin-font) !important;
+  font-size: var(--fin-body-sz) !important;
+  line-height: var(--fin-lh) !important;
+  font-weight: var(--fin-body-wt) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6 {
+  font-family: var(--fin-font) !important;
+  color: var(--fin-head-color) !important;
+  line-height: 1.3 !important;
+}
+
+h4,
+.h4 {
+  font-size: var(--fin-h4-sz) !important;
+  font-weight: var(--fin-h4-wt) !important;
+}
+
+h5,
+.h5 {
+  font-size: var(--fin-h5-sz) !important;
+  font-weight: var(--fin-h5-wt) !important;
+}
+
+h6,
+.h6 {
+  font-size: var(--fin-h6-sz) !important;
+  font-weight: var(--fin-h6-wt) !important;
+}
+
+/* Muted / secondary text */
+.text-muted,
+.text-secondary {
+  color: var(--fin-muted-color) !important;
+  font-size: var(--fin-label-sz) !important;
+}
+
+small,
+.small,
+.form-text {
+  font-size: var(--fin-small-sz) !important;
+  line-height: 1.4;
+}
+
+
+/* ============================================================
+   §2  PAGE HEADER  (.fin-page-header)
+   Standard pattern for every list/detail page
+   ============================================================ */
+
+.fin-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.fin-page-header .fin-page-title {
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--fin-head-color);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.fin-page-header .fin-page-subtitle {
+  font-size: var(--fin-label-sz);
+  color: var(--fin-muted-color);
+  font-weight: var(--fin-emph-wt);
+  margin: 0.2rem 0 0;
+}
+
+.fin-page-header .fin-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+/* Breadcrumb inside page header */
+.fin-breadcrumb {
+  font-size: var(--fin-small-sz);
+  font-weight: var(--fin-emph-wt);
+  color: var(--fin-muted-color);
+  margin-bottom: 0.25rem;
+}
+
+.fin-breadcrumb a {
+  color: var(--bs-primary);
+  text-decoration: none;
+}
+
+.fin-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+
+/* ============================================================
+   §3  CARDS
+   ============================================================ */
+
+.card {
+  border: none !important;
+  border-radius: var(--fin-card-radius) !important;
+  box-shadow: var(--fin-card-shadow) !important;
+  background: var(--bs-paper-bg, #fff) !important;
+}
+
+.card-header {
+  border-bottom: 1px solid var(--bs-border-color) !important;
+  background: transparent !important;
+  padding: 1rem 1.25rem 0.85rem !important;
+}
+
+.card-header .card-title {
+  font-size: var(--fin-h5-sz) !important;
+  font-weight: var(--fin-h5-wt) !important;
+  color: var(--fin-head-color) !important;
+  margin: 0 !important;
+}
+
+.card-body {
+  padding: 1.25rem !important;
+}
+
+/* KPI / stat card */
+.fin-card-kpi .fin-kpi-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--fin-head-color);
+}
+
+.fin-card-kpi .fin-kpi-label {
+  font-size: var(--fin-label-sz);
+  font-weight: var(--fin-label-wt);
+  color: var(--fin-muted-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+}
+
+
+/* ============================================================
+   §4  TABLES
+   ============================================================ */
+
+/* Header row */
+.table> :not(caption)>*>th {
+  font-family: var(--fin-font) !important;
+  font-size: var(--fin-label-sz) !important;
+  font-weight: var(--fin-label-wt) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--fin-head-color) !important;
+  background: var(--bs-body-bg) !important;
+  padding: var(--fin-table-pad-y) var(--fin-table-pad-x) !important;
+  border-bottom: 2px solid var(--bs-border-color) !important;
+  white-space: nowrap;
+}
+
+/* Body cells */
+.table> :not(caption)>*>td {
+  font-size: var(--fin-body-sz) !important;
+  font-weight: var(--fin-body-wt);
+  color: var(--bs-body-color);
+  padding: var(--fin-table-pad-y) var(--fin-table-pad-x) !important;
+  vertical-align: middle !important;
+  border-color: var(--bs-border-color) !important;
+}
+
+/* Row hover */
+.table-hover>tbody>tr:hover>td {
+  background-color: rgba(192, 57, 43, 0.04) !important;
+}
+
+/* Table inside a card — remove double border */
+.card .table-responsive {
+  border-radius: 0 0 var(--fin-card-radius) var(--fin-card-radius);
+  overflow-x: auto;
+}
+
+/* ============================================================
+   §Status Badge Standard
+   ============================================================ */
+.fin-status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  line-height: 1.15;
+}
+
+.fin-status-active {
+  background: #e8f7ee;
+  color: #1f7a45;
+  border-color: #b8e4c7;
+}
+
+.fin-status-inactive {
+  background: #f5f5f5;
+  color: #6b7280;
+  border-color: #e5e7eb;
+}
+
+.fin-status-draft {
+  background: #fff8e6;
+  color: #9a6700;
+  border-color: #f4d999;
+}
+
+.fin-status-posted {
+  background: #e8f2ff;
+  color: #1d4ed8;
+  border-color: #bfd6ff;
+}
+
+.fin-status-void {
+  background: #feecec;
+  color: #b42318;
+  border-color: #fecaca;
+}
+
+.fin-status-neutral {
+  background: #f3f4f6;
+  color: #4b5563;
+  border-color: #e5e7eb;
+}
+
+/* Autofit utilities */
+.table-autofit th,
+.table-autofit td {
+  vertical-align: middle;
+}
+
+.table-autofit .col-notes,
+.table td.col-notes,
+.table th.col-notes {
+  min-width: 220px;
+  max-width: 360px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.table-autofit .cell-nowrap,
+.table td.cell-nowrap,
+.table th.cell-nowrap {
+  white-space: nowrap;
+}
+
+.fin-audit-table .col-date,
+.fin-audit-table .col-no,
+.fin-audit-table .col-type,
+.fin-audit-table .col-amount,
+.fin-audit-table .col-balance,
+.fin-audit-table .col-delta,
+.fin-audit-table .col-ref {
+  white-space: nowrap;
+}
+
+.fin-audit-table .col-notes {
+  min-width: 220px;
+  max-width: 360px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.fin-audit-metric {
+  line-height: 1.35;
+}
+
+.fin-audit-primary {
+  font-weight: var(--fin-strong-wt) !important;
+  color: var(--fin-head-color);
+}
+
+.fin-audit-secondary {
+  display: block;
+  font-size: var(--fin-small-sz);
+  color: var(--fin-muted-color);
+}
+
+.fin-audit-delta-positive .fin-audit-primary {
+  color: #1f7a45;
+}
+
+.fin-audit-delta-negative .fin-audit-primary {
+  color: #b42318;
+}
+
+.fin-audit-note {
+  font-size: var(--fin-small-sz);
+  color: var(--fin-muted-color);
+}
+
+
+/* ============================================================
+   §5  ACTION CELL  (column with icon-only buttons)
+   ============================================================ */
+
+td.action-cell,
+th.action-cell {
+  white-space: nowrap !important;
+  text-align: right;
+  width: 1%;
+  /* shrink to content */
+  padding-right: 1rem !important;
+}
+
+.action-cell .d-flex {
+  flex-wrap: nowrap !important;
+}
+
+/* Square icon-only button */
+.action-icon-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: var(--fin-btn-icon-sz) !important;
+  height: var(--fin-btn-icon-sz) !important;
+  min-width: var(--fin-btn-icon-sz) !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  font-size: 0.92rem !important;
+  line-height: 1 !important;
+  flex-shrink: 0;
+  transition: all 0.15s ease !important;
+}
+
+.action-icon-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+
+/* ============================================================
+   §6  BUTTONS
+   ============================================================ */
+
+.btn {
+  font-family: var(--fin-font) !important;
+  font-weight: var(--fin-strong-wt) !important;
+  border-radius: 8px !important;
+  min-height: var(--fin-btn-height) !important;
+  transition: all 0.18s ease !important;
+  letter-spacing: 0.01em;
+}
+
+.btn-sm {
+  min-height: var(--fin-btn-icon-sz) !important;
+  font-size: 0.8125rem !important;
+  padding: 0.3rem 0.65rem !important;
+}
+
+.btn-primary {
+  background: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+  color: #fff !important;
+}
+
+.btn-primary:hover {
+  background: var(--bs-primary-shade-20, #922d21) !important;
+  border-color: var(--bs-primary-shade-20, #922d21) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(192, 57, 43, 0.35) !important;
+}
+
+.btn i.ri,
+.btn .ri {
+  vertical-align: -0.1em;
+}
+
+
+/* ============================================================
+   §7  BADGES
+   ============================================================ */
+
+.badge {
+  font-family: var(--fin-font) !important;
+  font-size: 0.7rem !important;
+  font-weight: var(--fin-label-wt) !important;
+  border-radius: 30px !important;
+  padding: 0.3em 0.65em !important;
+  letter-spacing: 0.02em;
+}
+
+
+/* ============================================================
+   §8  FORM CONTROLS
+   ============================================================ */
+
+.form-control,
+.form-select {
+  font-family: var(--fin-font) !important;
+  font-size: var(--fin-body-sz) !important;
+  font-weight: var(--fin-body-wt) !important;
+  min-height: 38px !important;
+  border-color: var(--bs-border-color) !important;
+  border-radius: 8px !important;
+  transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--bs-primary) !important;
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.12) !important;
+}
+
+.form-label {
+  font-size: var(--fin-label-sz) !important;
+  font-weight: var(--fin-label-wt) !important;
+  color: var(--fin-head-color) !important;
+  margin-bottom: 0.35rem !important;
+}
+
+
+/* ============================================================
+   §9  ALERTS & FLASH MESSAGES
+   ============================================================ */
+
+.alert {
+  font-size: var(--fin-body-sz) !important;
+  font-weight: var(--fin-emph-wt) !important;
+  border-radius: var(--fin-card-radius) !important;
+  border-left-width: 4px !important;
+}
+
+
+/* ============================================================
+   §10  MISC UTILITIES
+   ============================================================ */
+
+/* Matrix checkboxes */
+.matrix-cb {
+  cursor: pointer;
+  width: 1.1em;
+  height: 1.1em;
+}
+
+/* Favorit unpin button (tampil on hover) */
+.fav-unpin {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+#layout-menu li[data-fav-id]:hover .fav-unpin {
+  opacity: 1;
+}
+
+/* Text weight helpers */
+.fw-medium {
+  font-weight: var(--fin-emph-wt) !important;
+}
+
+.fw-semibold {
+  font-weight: var(--fin-strong-wt) !important;
+}
+
+.fw-extrabold {
+  font-weight: 800 !important;
+}
+
+/* Vertical center icon next to text */
+.ri {
+  vertical-align: -0.15em;
+}
+
+/* Smooth page transition */
+.content-wrapper {
+  animation: fin-fadein 0.15s ease;
+}
+
+@keyframes fin-fadein {
+  from {
+    opacity: 0.6;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,50 @@
+'use strict';
+// Real browser, production views, synthetic order/payment transitions. No live writes.
+const {spawn,execFileSync}=require('node:child_process');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'../..');
+const views=JSON.parse(execFileSync('php',[path.join(__dirname,'incoming_order_view_fixture.php')],{maxBuffer:2e6}));
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'finance-incoming-browser-'));
+const chrome=spawn('/usr/bin/google-chrome',['--headless','--no-sandbox','--disable-dev-shm-usage','--disable-background-networking','--no-first-run','--remote-debugging-pipe','--user-data-dir='+dir],{stdio:['ignore','ignore','ignore','pipe','pipe']});
+let id=0,buffer='',session,checks=0;const pending=new Map(),errors=[];
+chrome.stdio[4].on('data',b=>{buffer+=b;let n;while((n=buffer.indexOf('\0'))>=0){const m=JSON.parse(buffer.slice(0,n));buffer=buffer.slice(n+1);if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.exception?.description||m.params.exceptionDetails.text);const p=pending.get(m.id);if(p){pending.delete(m.id);clearTimeout(p.timer);m.error?p.reject(Error(m.error.message)):p.resolve(m.result);}}});
+const send=(method,params={},sessionId)=>new Promise((resolve,reject)=>{const key=++id;const timer=setTimeout(()=>reject(Error('CDP timeout: '+method)),30000);pending.set(key,{resolve,reject,timer});chrome.stdio[3].write(JSON.stringify({id:key,method,params,...(sessionId?{sessionId}:{})})+'\0');});
+const cdp=(m,p={})=>send(m,p,session);
+const evaluate=async expression=>{const r=await cdp('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value;};
+const pause=()=>new Promise(r=>setTimeout(r,100));
+const check=(ok,label)=>{assert.ok(ok,label);checks++;};
+const mock=`window.intervals=[];window.setInterval=fn=>{intervals.push(fn);return intervals.length};window.writes=[];
+window.orders=[{id:12,order_no:'MSO-FIXTURE',status:'PENDING',flow_code:'WAITING_PAYMENT',flow_label:'Menunggu Pembayaran QRIS',payment_mode:'QRIS',payment_status:'PENDING',can_verify:0,grand_total:87000,stock_commit_status:'PENDING'}];
+window.fetch=async(url,opts={})=>{if(opts.method&&opts.method!=='GET'){writes.push(url);throw Error('Writes forbidden');}const u=new URL(url,'https://fixture.invalid');if(window.failNextList&&u.searchParams.get('status_tab')!=='ALL'){window.failNextList=false;throw Error('Temporary list failure');}const all=orders.map(r=>({...r}));const rows=all.filter(r=>u.searchParams.get('status_tab')==='ALL'||r.flow_code===u.searchParams.get('status_tab'));const payload={ok:true,rows,counts:{ALL:all.length,NEEDS_VERIFY:all.filter(r=>r.can_verify===1).length,WAITING_PAYMENT:all.filter(r=>r.flow_code==='WAITING_PAYMENT').length},meta:{total:rows.length,page:1,limit:20,total_pages:1}};return {ok:true,status:200,text:async()=>JSON.stringify(payload),json:async()=>payload};};`;
+(async()=>{try{
+ const {targetId}=await send('Target.createTarget',{url:'about:blank'});session=(await send('Target.attachToTarget',{targetId,flatten:true})).sessionId;
+ await cdp('Page.enable');await cdp('Runtime.enable');
+ for(const [name,view] of Object.entries(views)){
+  errors.length=0;await cdp('Page.navigate',{url:'about:blank'});const {frameTree}=await cdp('Page.getFrameTree');
+  await cdp('Page.setDocumentContent',{frameId:frameTree.frame.id,html:'<!doctype html><html><head><script>'+mock+'</script></head><body>'+view.replace(/<source\b[^>]*>/g,'')+'<script>'+fs.readFileSync(path.join(root,'assets/vendor/js/bootstrap.js'),'utf8')+'</script></body></html>'});await pause();
+  check(errors.length===0,name+' initializes without JavaScript errors: '+errors.join(';'));
+  check(await evaluate(`document.querySelectorAll('#self_order_body tr').length===0`),name+' unpaid QRIS stays out of ready-to-verify tab');
+  await evaluate(`orders[0]={...orders[0],status:'PAID',payment_status:'PAID',paid_total:87000,flow_code:'NEEDS_VERIFY',can_verify:1,is_paid:1};intervals[0]()`);await pause();
+  check(await evaluate(`document.querySelectorAll('#self_order_body tr').length===1 && document.querySelector('.btn-self-order-verify').dataset.canVerify==='1'`),name+' paid existing ID appears without a new order or reload');
+  await evaluate(`orders[0]={...orders[0],flow_code:'PAID_ORDER',can_verify:0,is_verified:1,stock_commit_status:'POSTED'};intervals[0]()`);await pause();
+  check(await evaluate(`document.querySelectorAll('#self_order_body tr').length===0`),name+' verification elsewhere removes stale pending row');
+  await evaluate(`window.failNextList=true;orders.push({...orders[0],id:13,order_no:'MSO-NEW',flow_code:'NEEDS_VERIFY',can_verify:1,stock_commit_status:'PENDING'});intervals[0]()`);await pause();
+  check(await evaluate(`document.querySelectorAll('#self_order_body tr').length===0 && document.body.textContent.includes('Temporary list failure')`),name+' temporary list failure remains visible');
+  await evaluate('intervals[0]()');await pause();
+  check(await evaluate(`document.querySelectorAll('#self_order_body tr').length===1 && document.getElementById('self_order_body').textContent.includes('MSO-NEW')`),name+' new incoming order refreshes queue');
+ check(await evaluate('writes.length===0'),name+' polling never pays, verifies, prints, or changes stock');
+ }
+ errors.length=0;await cdp('Page.navigate',{url:'about:blank'});const {frameTree}=await cdp('Page.getFrameTree');
+ const notifierMock=mock+`orders[0]={...orders[0],flow_code:'NEEDS_VERIFY',can_verify:1};window.FINANCE_GLOBAL_NOTIFIER_CONFIG={enabled:true,endpoint:'https://fixture.invalid/orders',title:'Self Order'};`;
+ await cdp('Page.setDocumentContent',{frameId:frameTree.frame.id,html:'<!doctype html><html><head><script>'+notifierMock+'</script></head><body><script>'+fs.readFileSync(path.join(root,'assets/vendor/libs/jquery/jquery.js'),'utf8')+'</script><script>'+fs.readFileSync(path.join(root,'assets/js/app.js'),'utf8')+'</script></body></html>'});await pause();
+ check(errors.length===0,'global notifier initializes without errors: '+errors.join(';'));
+ check(await evaluate(`document.querySelectorAll('.finance-global-notify-toast').length===1 && document.body.textContent.includes('Order perlu verifikasi: MSO-FIXTURE')`),'global notifier exposes existing verification backlog on first load');
+ await evaluate('intervals[0]()');await pause();
+ check(await evaluate(`document.querySelectorAll('.finance-global-notify-toast').length===1`),'unchanged backlog does not alert twice');
+ await evaluate(`orders.push({...orders[0],id:14,order_no:'MSO-QRIS',can_verify:0,flow_code:'WAITING_PAYMENT'});intervals[0]()`);await pause();
+ await evaluate(`orders[1]={...orders[1],can_verify:1,flow_code:'NEEDS_VERIFY',status:'PAID',payment_status:'PAID'};intervals[0]()`);await pause();
+ check(await evaluate(`document.querySelectorAll('.finance-global-notify-toast').length===3 && document.body.textContent.includes('Order perlu verifikasi: MSO-QRIS')`),'global notifier alerts when an existing QRIS order becomes verifiable');
+ await evaluate('intervals[0]()');await pause();
+ check(await evaluate(`document.querySelectorAll('.finance-global-notify-toast').length===3 && writes.length===0`),'payment notification is deduplicated and read-only');
+ console.log(JSON.stringify({status:'PASS',checks,scope:'offline Chrome with synthetic payments; no live mutations'}));
+}catch(e){console.error(e);process.exitCode=1;}finally{for(const p of pending.values())clearTimeout(p.timer);chrome.kill('SIGTERM');}})();

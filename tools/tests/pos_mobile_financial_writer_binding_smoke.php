@@ -153,8 +153,8 @@ pfw_check(
 );
 
 $writers = [
-    'order_void_save' => ['writer' => 'save_order_void(', 'proof' => "consume_mobile_order_reversal_step_up('VOID'"],
-    'order_refund_save' => ['writer' => 'save_order_refund(', 'proof' => "consume_mobile_order_reversal_step_up('REFUND'"],
+    'order_void_save' => ['writer' => 'save_order_void(', 'proof' => "!is_array(\$this->mobileUser) && !\$this->consume_mobile_order_reversal_step_up('VOID'"],
+    'order_refund_save' => ['writer' => 'save_order_refund(', 'proof' => "!is_array(\$this->mobileUser) && !\$this->consume_mobile_order_reversal_step_up('REFUND'"],
     'payment_save' => ['writer' => 'save_cashier_payment(', 'proof' => ''],
 ];
 foreach ($writers as $endpoint => $writerPolicy) {
@@ -171,7 +171,7 @@ foreach ($writers as $endpoint => $writerPolicy) {
     $needles[] = $writerPolicy['writer'];
     pfw_check(
         pfw_ordered($method, $needles),
-        $endpoint . ' orders POST, auth, RBAC, payload, canonical scope, proof when required, then writer'
+        $endpoint . ' orders POST, auth, RBAC, canonical scope, web-only proof when required, then writer'
     );
 }
 $payment = pfw_method($source, 'payment_save');

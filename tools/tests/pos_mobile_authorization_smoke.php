@@ -1582,7 +1582,9 @@ pos_mobile_smoke_expect(
     ($sensitiveActionContract['version'] ?? null) === 3
         && ($sensitiveActionContract['proof_ttl_seconds'] ?? null) === 180
         && (($sensitiveActionContract['actions']['VOID']['verify_route'] ?? '') === 'pos-mobile/orders/reversal-step-up/verify')
+        && (($sensitiveActionContract['actions']['VOID']['proof_required'] ?? null) === false)
         && (($sensitiveActionContract['actions']['REFUND']['submit_method'] ?? '') === 'POST')
+        && (($sensitiveActionContract['actions']['REFUND']['proof_required'] ?? null) === false)
         && (($sensitiveActionContract['actions']['ORDER_REPRINT']['verify_route'] ?? '') === 'pos-mobile/orders/reprint-step-up/verify')
         && (($sensitiveActionContract['actions']['ORDER_REPRINT']['submit_route'] ?? '') === 'pos-mobile/orders/reprint-targets/{order_id}')
         && (($sensitiveActionContract['actions']['ORDER_REPRINT']['submit_method'] ?? '') === 'POST')
@@ -1593,7 +1595,7 @@ pos_mobile_smoke_expect(
         && (($sensitiveActionContract['actions']['RESERVATION_DEPOSIT_REFUND']['verify_route'] ?? '') === 'pos-mobile/reservations/reject-step-up/verify')
         && (($sensitiveActionContract['actions']['RESERVATION_DEPOSIT_REFUND']['submit_route'] ?? '') === 'pos-mobile/reservations/reject/{reservation_id}')
         && (($sensitiveActionContract['actions']['RESERVATION_DEPOSIT_REFUND']['submit_method'] ?? '') === 'POST'),
-    'bearer bootstrap exposes a server-owned non-secret capability contract for every proof-required APK action'
+    'bearer bootstrap exposes the server-owned password policy for each APK action'
 );
 pos_mobile_smoke_expect(
     $model->findActiveSessionCalls === 1
@@ -2832,21 +2834,6 @@ foreach ($financialWriterCases as $endpoint => $writerCase) {
             'order_id' => $scopeCase['order_id'],
             'client_event_id' => $endpoint === 'payment_save' ? $clientEventId : '',
         ];
-        $mobileProofRows = [];
-        if (in_array($endpoint, ['order_void_save', 'order_refund_save'], true) && $scopeCase['accepted']) {
-            $proof = $endpoint === 'order_void_save' ? str_repeat('a', 64) : str_repeat('b', 64);
-            $payload['step_up_proof'] = $proof;
-            $mobileProofRows[] = [
-                'proof_hash' => hash('sha256', $proof),
-                'mobile_token_id' => 41,
-                'user_id' => 42,
-                'terminal_id' => 501,
-                'action' => $endpoint === 'order_void_save' ? 'VOID' : 'REFUND',
-                'order_id' => 2100,
-                'expires_at' => '2999-01-01 00:00:00',
-                'consumed_at' => null,
-            ];
-        }
         $syncRows = $endpoint === 'payment_save' && $scopeName === 'cross outlet'
             ? [[
                 'client_event_id' => $clientEventId,
@@ -2867,7 +2854,7 @@ foreach ($financialWriterCases as $endpoint => $writerCase) {
             [],
             $syncRows,
             ['state' => 'GLOBAL', 'division_id' => null],
-            $mobileProofRows
+            []
         );
         $model->orderDraft = $scopeCase['order'];
         $model->writerResults[$writerCase['model_method']] = $writerCase['result'];
@@ -2887,7 +2874,7 @@ foreach ($financialWriterCases as $endpoint => $writerCase) {
                     && $db->syncReads === $expectedSyncReads
                     && $db->syncInserts === $expectedSyncInserts
                     && $db->syncUpdates === $expectedSyncUpdates,
-                $prefix . ' reaches the writer only after outlet resolution and one-use proof consumption'
+                $prefix . ' reaches the writer after outlet resolution without an APK password'
             );
             continue;
         }

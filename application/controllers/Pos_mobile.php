@@ -195,6 +195,7 @@ class Pos_mobile extends CI_Controller
                 'outlet_id' => $binding['outlet_id'],
                 'limit' => 60,
             ]);
+            $catalogMeta = $this->mobile_catalog_meta($binding['outlet_id']);
 
             $this->json_ok([
                 'sync_cursor' => date('c'),
@@ -208,6 +209,7 @@ class Pos_mobile extends CI_Controller
                 'payment_methods' => $this->Pos_model->deposit_payment_method_options(),
                 'products' => $products,
                 'bundles' => $bundles,
+                'catalog_meta' => $catalogMeta,
                 'deleted' => [
                     'products' => [],
                     'bundles' => [],
@@ -237,6 +239,7 @@ class Pos_mobile extends CI_Controller
             'outlet_id' => $outletId,
             'limit' => 60,
         ]);
+        $catalogMeta = $this->mobile_catalog_meta($outletId);
 
         $this->json_ok([
             'sync_cursor' => date('c'),
@@ -248,6 +251,7 @@ class Pos_mobile extends CI_Controller
             'payment_methods' => $this->Pos_model->deposit_payment_method_options(),
             'products' => $products,
             'bundles' => $bundles,
+            'catalog_meta' => $catalogMeta,
             'deleted' => [
                 'products' => [],
                 'bundles' => [],
@@ -255,6 +259,17 @@ class Pos_mobile extends CI_Controller
                 'printers' => [],
             ],
         ]);
+    }
+
+    private function mobile_catalog_meta(int $outletId): array
+    {
+        $products = $this->Pos_model->order_product_catalog_meta(['outlet_id' => $outletId, 'limit' => 120]);
+        $bundles = $this->Pos_model->order_bundle_catalog_meta(['outlet_id' => $outletId, 'limit' => 60]);
+        $products['page'] = 1;
+        $products['complete'] = (int)$products['total_pages'] <= 1;
+        $bundles['page'] = 1;
+        $bundles['complete'] = (int)$bundles['total_pages'] <= 1;
+        return ['products' => $products, 'bundles' => $bundles, 'tombstones_available' => false];
     }
 
     public function catalog(): void
@@ -289,7 +304,11 @@ class Pos_mobile extends CI_Controller
         $divisionId = max(0, (int)$this->input->get('division_id', true));
         $categoryId = max(0, (int)$this->input->get('category_id', true));
         $limit = max(1, min(120, (int)$this->input->get('limit', true) ?: 60));
+        $page = max(1, (int)$this->input->get('page', true) ?: 1);
         $mode = strtoupper(trim((string)$this->input->get('mode', true)));
+        if ($mode === 'BUNDLE') {
+            $limit = min($limit, 60);
+        }
 
         if (!$isBearer && $outletId <= 0) {
             $employeeId = $this->current_actor_employee_id();
@@ -311,10 +330,17 @@ class Pos_mobile extends CI_Controller
             'division_id' => $divisionId,
             'category_id' => $categoryId,
             'limit' => $limit,
+            'offset' => ($page - 1) * $limit,
         ];
+        $catalogMeta = $mode === 'BUNDLE'
+            ? $this->Pos_model->order_bundle_catalog_meta($payload)
+            : $this->Pos_model->order_product_catalog_meta($payload);
+        $catalogMeta['page'] = $page;
+        $catalogMeta['complete'] = $page >= max(1, (int)$catalogMeta['total_pages']);
         $this->json_ok([
             'mode' => $mode === 'BUNDLE' ? 'BUNDLE' : 'PRODUCT',
             'query' => $q,
+            'catalog_meta' => $catalogMeta,
             'rows' => $mode === 'BUNDLE'
                 ? $this->Pos_model->order_bundle_catalog($payload)
                 : $this->Pos_model->order_product_catalog($payload),
@@ -492,11 +518,13 @@ class Pos_mobile extends CI_Controller
                     'verify_route' => 'pos-mobile/orders/reversal-step-up/verify',
                     'submit_route' => 'pos-mobile/orders/void/save',
                     'submit_method' => 'POST',
+                    'proof_required' => false,
                 ],
                 'REFUND' => [
                     'verify_route' => 'pos-mobile/orders/reversal-step-up/verify',
                     'submit_route' => 'pos-mobile/orders/refund/save',
                     'submit_method' => 'POST',
+                    'proof_required' => false,
                 ],
                 'ORDER_REPRINT' => [
                     'verify_route' => 'pos-mobile/orders/reprint-step-up/verify',
@@ -1234,6 +1262,23 @@ class Pos_mobile extends CI_Controller
         ]);
     }
 
+    public function extra_options_batch(): void
+    {
+        if (!$this->require_mobile_post() || !$this->authorize_mobile(true)) {
+            return;
+        }
+        if (!$this->mobile_permission($this->mobile_order_workspace_page_code('view'), 'view')) {
+            return;
+        }
+        $payload = $this->request_payload();
+        $ids = array_values(array_unique(array_filter(array_map('intval', (array)($payload['product_ids'] ?? [])))));
+        if (count($ids) > 100) {
+            $this->json_error('Maksimal 100 produk per permintaan.', 422);
+            return;
+        }
+        $this->json_ok(['groups_by_product' => $this->Pos_model->order_extra_options_batch($ids)]);
+    }
+
     public function printers(): void
     {
         if (!$this->authorize_mobile(true)) {
@@ -1842,12 +1887,14 @@ class Pos_mobile extends CI_Controller
         $status = in_array($requestedStatus, ['DRAFT', 'CONFIRMED', 'PAID'], true)
             ? $requestedStatus
             : 'ALL';
+        $offlineSnapshot = is_array($this->mobileUser)
+            && (string)$this->input->get('offline_snapshot', true) === '1';
         $filters = [
             'q' => trim((string)$this->input->get('q', true)),
             'status' => $status,
             'workspace_mode' => $workspaceMode,
             'outlet_id' => $outletId,
-            'date_from' => date('Y-m-d'),
+            'date_from' => $offlineSnapshot && $workspaceMode === 'UNPAID' ? '' : date('Y-m-d'),
             'date_to' => date('Y-m-d'),
             'page' => max(1, (int)$this->input->get('page', true) ?: 1),
             'limit' => max(1, min(50, (int)$this->input->get('limit', true) ?: 20)),
@@ -2028,7 +2075,7 @@ class Pos_mobile extends CI_Controller
         if ($orderContext === null) {
             return;
         }
-        if (!$this->consume_mobile_order_reversal_step_up('VOID', (int)$orderContext['order_id'], $payload)) {
+        if (!is_array($this->mobileUser) && !$this->consume_mobile_order_reversal_step_up('VOID', (int)$orderContext['order_id'], $payload)) {
             return;
         }
         unset($payload['step_up_proof']);
@@ -2064,7 +2111,7 @@ class Pos_mobile extends CI_Controller
         if ($orderContext === null) {
             return;
         }
-        if (!$this->consume_mobile_order_reversal_step_up('REFUND', (int)$orderContext['order_id'], $payload)) {
+        if (!is_array($this->mobileUser) && !$this->consume_mobile_order_reversal_step_up('REFUND', (int)$orderContext['order_id'], $payload)) {
             return;
         }
         unset($payload['step_up_proof']);

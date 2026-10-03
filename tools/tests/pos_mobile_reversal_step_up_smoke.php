@@ -70,8 +70,8 @@ $check(strpos($issue, $passwordPersistenceNeedle) === false && strpos($issue, 's
 $check($ordered($cashierCloseIssue, ["from('pos_mobile_auth_token')", "from('auth_user')", 'password_verify(', 'record_mobile_order_reversal_step_up_failure(', 'random_bytes(32)', "insert('pos_mobile_sensitive_action_proof'", "'action' => 'CASHIER_CLOSE'", "'order_id' => 0", "'cashier_session_id' => \$cashierSessionId"]), 'cashier-close issuance verifies password and binds its hash proof to the exact session, not an order');
 $check(strpos($cashierCloseIssue, $passwordPersistenceNeedle) === false && strpos($cashierCloseIssue, 'step_up_proof') === false, 'cashier-close issuance never persists or returns a password');
 $check($ordered($consume, ["'proof_hash', hash('sha256', \$proof)", "'mobile_token_id', \$tokenId", "'user_id', \$userId", "'terminal_id', \$terminalId", "'action', \$action", "'order_id', \$orderId", "'expires_at >=', date", "'consumed_at IS NULL'", "update('pos_mobile_sensitive_action_proof'", "'consumed_at'", 'affected_rows() !== 1']), 'consumption is atomic and one-use with exact bearer/action/order binding');
-$check($ordered($void, ['mobile_financial_order_context(', "consume_mobile_order_reversal_step_up('VOID'", "unset(\$payload['step_up_proof'])", 'save_order_void(']), 'mobile void consumes its proof before the writer and strips it from the writer payload');
-$check($ordered($refund, ['mobile_financial_order_context(', "consume_mobile_order_reversal_step_up('REFUND'", "unset(\$payload['step_up_proof'])", 'save_order_refund(']), 'mobile refund consumes its proof before the writer and strips it from the writer payload');
+$check($ordered($void, ['mobile_financial_order_context(', "!is_array(\$this->mobileUser) && !\$this->consume_mobile_order_reversal_step_up('VOID'", "unset(\$payload['step_up_proof'])", 'save_order_void(']), 'bearer void skips password while the web-session fallback retains proof consumption');
+$check($ordered($refund, ['mobile_financial_order_context(', "!is_array(\$this->mobileUser) && !\$this->consume_mobile_order_reversal_step_up('REFUND'", "unset(\$payload['step_up_proof'])", 'save_order_refund(']), 'bearer refund skips password while the web-session fallback retains proof consumption');
 $check($ordered($reprint, ['$this->require_mobile_post()', '$this->authorize_mobile(true)', "mobile_order_workspace_page_code('view')", 'mobile_financial_order_context(', '$this->request_payload()', 'direct_print_targets_for_order_reprint'])
     && strpos($reprint, "consume_mobile_order_reversal_step_up('ORDER_REPRINT'") === false,
     'mobile reprint is POST-only and outlet-scoped without a password proof');
@@ -87,11 +87,12 @@ $check(
         "'CASHIER_CLOSE'",
         "'RESERVATION_DEPOSIT_REFUND'",
     ])
+        && substr_count($contract, "'proof_required' => false") === 3
         && strpos($contract, "'pos-mobile/cashier/close-step-up/verify'") !== false
         && strpos($contract, "'pos-mobile/reservations/reject-step-up/verify'") !== false
         && strpos($contract, "'pos-mobile/reservations/reject/{reservation_id}'") !== false
         && substr_count($contract, "'submit_method' => 'POST'") === 5,
-    'bearer bootstrap contract names every proof-required action and its exact POST endpoint without exposing a secret'
+    'bearer bootstrap contract marks void, refund, and reprint password-free without changing other proof actions'
 );
 $check(strpos($consume, "['step_up_required' => true]") !== false && substr_count($consume, '428') >= 2, 'missing, expired, cross-bound, or replayed proof fails closed with a machine-readable 428 response');
 $check(strpos($migration, 'ALTER TABLE `pos_mobile_auth_token`') !== false && strpos($migration, 'CREATE TABLE IF NOT EXISTS `pos_mobile_sensitive_action_proof`') !== false && strpos($migration, "enum('VOID','REFUND')") !== false, 'managed migration supplies limiter columns and a narrow proof table');

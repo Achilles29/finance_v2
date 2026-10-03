@@ -6629,6 +6629,7 @@ class Pos_model extends CI_Model
 
         $rows = $db->select($select, false)
             ->order_by('o.ordered_at', 'DESC')
+            ->order_by('o.id', 'DESC')
             ->limit($limit, $offset)
             ->get()
             ->result_array();
@@ -6840,6 +6841,7 @@ class Pos_model extends CI_Model
         $divisionId = max(0, (int)($filters['division_id'] ?? 0));
         $categoryId = max(0, (int)($filters['category_id'] ?? 0));
         $limit = max(1, min(120, (int)($filters['limit'] ?? 32)));
+        $offset = max(0, (int)($filters['offset'] ?? 0));
 
         $select = [
             'p.id',
@@ -6900,9 +6902,72 @@ class Pos_model extends CI_Model
             ->order_by('pd.sort_order', 'ASC')
             ->order_by('pc.sort_order', 'ASC')
             ->order_by('p.product_name', 'ASC')
+            ->order_by('p.id', 'ASC')
+            ->offset($offset)
             ->limit($limit)
             ->get()
             ->result_array();
+    }
+
+    public function order_product_catalog_meta(array $filters): array
+    {
+        $outletId = max(0, (int)($filters['outlet_id'] ?? 0));
+        $divisionId = max(0, (int)($filters['division_id'] ?? 0));
+        $categoryId = max(0, (int)($filters['category_id'] ?? 0));
+        $q = trim((string)($filters['q'] ?? ''));
+        $limit = max(1, min(120, (int)($filters['limit'] ?? 120)));
+        $fields = ['COUNT(DISTINCT p.id) AS total', 'MAX(p.id) AS max_id'];
+        $signature = ['p.id', 'p.selling_price', 'p.hpp_live_cache'];
+        if ($this->db->field_exists('updated_at', 'mst_product')) {
+            $fields[] = 'MAX(p.updated_at) AS max_updated_at';
+            $signature[] = 'p.updated_at';
+        }
+        $hasAvailability = $this->db->table_exists('pos_product_availability_cache');
+        if ($hasAvailability && $this->db->field_exists('computed_at', 'pos_product_availability_cache')) {
+            $fields[] = 'MAX(pac.computed_at) AS max_availability_computed_at';
+            $signature[] = 'pac.computed_at';
+        }
+        if ($hasAvailability) {
+            $signature[] = 'pac.availability_status';
+            $signature[] = 'pac.estimated_available_qty';
+            $signature[] = 'pac.hpp_live_snapshot';
+            if ($this->db->field_exists('is_dirty', 'pos_product_availability_cache')) {
+                $signature[] = 'pac.is_dirty';
+            }
+        }
+        $fields[] = "SUM(CRC32(CONCAT_WS('|', " . implode(', ', $signature) . "))) AS content_checksum";
+        $db = $this->db->select(implode(', ', $fields), false)
+            ->from('mst_product p');
+        if ($hasAvailability) {
+            $db->join('pos_product_availability_cache pac',
+                'pac.product_id = p.id AND pac.outlet_id = ' . $this->db->escape($outletId > 0 ? $outletId : -1), 'left', false);
+        }
+        $db->where('p.is_active', 1);
+        if ($this->db->field_exists('show_pos', 'mst_product')) {
+            $db->where('p.show_pos', 1);
+        }
+        if ($this->db->field_exists('show_in_cashier', 'mst_product')) {
+            $db->where('p.show_in_cashier', 1);
+        }
+        if ($divisionId > 0) {
+            $db->where('p.product_division_id', $divisionId);
+        }
+        if ($categoryId > 0) {
+            $db->where('p.product_category_id', $categoryId);
+        }
+        if ($q !== '') {
+            $db->group_start()->like('p.product_code', $q)->or_like('p.product_name', $q)->group_end();
+        }
+        $row = $db->get()->row_array() ?: [];
+        $total = max(0, (int)($row['total'] ?? 0));
+        return [
+            'total' => $total,
+            'limit' => $limit,
+            'total_pages' => $total > 0 ? (int)ceil($total / $limit) : 0,
+            'version' => hash('sha256', json_encode([$total, $row['max_id'] ?? 0,
+                $row['max_updated_at'] ?? '', $row['max_availability_computed_at'] ?? '',
+                $row['content_checksum'] ?? ''])),
+        ];
     }
 
     public function order_member_search(string $q, int $limit = 8): array
@@ -7076,6 +7141,7 @@ class Pos_model extends CI_Model
         $outletId = max(0, (int)($filters['outlet_id'] ?? 0));
         $divisionId = max(0, (int)($filters['division_id'] ?? 0));
         $limit = max(1, min(60, (int)($filters['limit'] ?? 24)));
+        $offset = max(0, (int)($filters['offset'] ?? 0));
 
         if (!$this->db->table_exists('pos_product_bundle') || !$this->db->table_exists('pos_product_bundle_line')) {
             return [];
@@ -7106,7 +7172,8 @@ class Pos_model extends CI_Model
             ", false)
             ->from('pos_product_bundle b')
             ->join('mst_product_division pd', 'pd.id = b.product_division_id', 'left')
-            ->where('b.is_active', 1);
+            ->where('b.is_active', 1)
+            ->where('EXISTS (SELECT 1 FROM pos_product_bundle_line blc WHERE blc.bundle_id = b.id)', null, false);
 
         if ($divisionId > 0) {
             $db->where('b.product_division_id', $divisionId);
@@ -7121,6 +7188,8 @@ class Pos_model extends CI_Model
         $bundleRows = $db
             ->order_by('pd.sort_order', 'ASC')
             ->order_by('b.bundle_name', 'ASC')
+            ->order_by('b.id', 'ASC')
+            ->offset($offset)
             ->limit($limit)
             ->get()
             ->result_array();
@@ -7132,6 +7201,7 @@ class Pos_model extends CI_Model
         $this->load->library('PosBundlePricingService');
         $results = [];
         foreach ($bundleRows as $bundle) {
+            $bundleEstimatedQty = null;
             $bundleId = (int)($bundle['id'] ?? 0);
             $bundleLines = $this->db
                 ->select('
@@ -7234,6 +7304,67 @@ class Pos_model extends CI_Model
         return $results;
     }
 
+    public function order_bundle_catalog_meta(array $filters): array
+    {
+        $limit = max(1, min(60, (int)($filters['limit'] ?? 60)));
+        if (!$this->db->table_exists('pos_product_bundle') || !$this->db->table_exists('pos_product_bundle_line')) {
+            return ['total' => 0, 'limit' => $limit, 'total_pages' => 0,
+                'version' => hash('sha256', 'bundle-empty')];
+        }
+        $fields = ['COUNT(DISTINCT b.id) AS total', 'MAX(b.id) AS max_id'];
+        $signature = ['b.id', 'bl.id', 'bl.product_id', 'bl.qty', 'bl.unit_price_override',
+            'p.selling_price', 'p.hpp_live_cache'];
+        if ($this->db->field_exists('updated_at', 'pos_product_bundle')) {
+            $fields[] = 'MAX(b.updated_at) AS max_updated_at';
+            $signature[] = 'b.updated_at';
+        }
+        if ($this->db->field_exists('updated_at', 'pos_product_bundle_line')) {
+            $signature[] = 'bl.updated_at';
+        }
+        if ($this->db->field_exists('updated_at', 'mst_product')) {
+            $signature[] = 'p.updated_at';
+        }
+        $hasAvailability = $this->db->table_exists('pos_product_availability_cache');
+        if ($hasAvailability) {
+            $signature[] = 'pac.availability_status';
+            $signature[] = 'pac.estimated_available_qty';
+            $signature[] = 'pac.hpp_live_snapshot';
+            if ($this->db->field_exists('computed_at', 'pos_product_availability_cache')) {
+                $signature[] = 'pac.computed_at';
+            }
+            if ($this->db->field_exists('is_dirty', 'pos_product_availability_cache')) {
+                $signature[] = 'pac.is_dirty';
+            }
+        }
+        $fields[] = "SUM(CRC32(CONCAT_WS('|', " . implode(', ', $signature) . "))) AS content_checksum";
+        $db = $this->db->select(implode(', ', $fields), false)
+            ->from('pos_product_bundle b')
+            ->join('pos_product_bundle_line bl', 'bl.bundle_id = b.id', 'inner')
+            ->join('mst_product p', 'p.id = bl.product_id', 'inner')
+            ->where('b.is_active', 1);
+        if ($hasAvailability) {
+            $db->join('pos_product_availability_cache pac',
+                'pac.product_id = p.id AND pac.outlet_id = ' . $this->db->escape(max(0, (int)($filters['outlet_id'] ?? 0))), 'left', false);
+        }
+        $divisionId = max(0, (int)($filters['division_id'] ?? 0));
+        if ($divisionId > 0) {
+            $db->where('b.product_division_id', $divisionId);
+        }
+        $q = trim((string)($filters['q'] ?? ''));
+        if ($q !== '') {
+            $db->group_start()->like('b.bundle_code', $q)->or_like('b.bundle_name', $q)->group_end();
+        }
+        $row = $db->get()->row_array() ?: [];
+        $total = max(0, (int)($row['total'] ?? 0));
+        return [
+            'total' => $total,
+            'limit' => $limit,
+            'total_pages' => $total > 0 ? (int)ceil($total / $limit) : 0,
+            'version' => hash('sha256', json_encode([$total, $row['max_id'] ?? 0,
+                $row['max_updated_at'] ?? '', $row['content_checksum'] ?? ''])),
+        ];
+    }
+
     public function order_extra_options(int $productId): array
     {
         if ($productId <= 0) {
@@ -7241,6 +7372,20 @@ class Pos_model extends CI_Model
         }
         $map = $this->load_product_extra_group_map([$productId]);
         return $map[$productId] ?? [];
+    }
+
+    public function order_extra_options_batch(array $productIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $productIds))));
+        if (!$ids) {
+            return [];
+        }
+        $groups = $this->load_product_extra_group_map($ids);
+        $result = [];
+        foreach ($ids as $id) {
+            $result[(string)$id] = $groups[$id] ?? [];
+        }
+        return $result;
     }
 
     public function save_order_draft(array $payload, int $actorEmployeeId, bool $allowMobileBackup = false): array

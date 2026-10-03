@@ -756,6 +756,7 @@ $route['pos-mobile/catalog'] = 'pos_mobile/catalog';
 $route['pos-mobile/catalog/availability/refresh'] = 'pos_mobile/catalog_availability_refresh';
 $route['pos-mobile/members/search'] = 'pos_mobile/member_search';
 $route['pos-mobile/products/extra-options'] = 'pos_mobile/extra_options';
+$route['pos-mobile/products/extra-options/batch'] = 'pos_mobile/extra_options_batch';
 $route['pos-mobile/printers'] = 'pos_mobile/printers';
 $route['pos-mobile/print/documents'] = 'pos_mobile/mobile_print_documents';
 $route['pos-mobile/printers/test/(:num)'] = 'pos_mobile/printer_test/$1';

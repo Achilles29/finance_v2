@@ -13,6 +13,8 @@ $cfgGet = static function(array $c, string $k, string $def = ''): string {
 
 $replRole   = strtoupper((string)($cfg['repl.server_role'] ?? 'STANDALONE'));
 $replOk     = ($replStatus['status'] ?? '') === 'OK';
+$replStatusTime = !empty($replStatus['timestamp']) ? strtotime((string)$replStatus['timestamp']) : false;
+$replStatusFresh = $replStatusTime !== false && (time() - $replStatusTime) <= 600;
 $lastDump   = !empty($recentDumps) ? $recentDumps[0] : null;
 ?>
 <style>
@@ -69,12 +71,15 @@ $lastDump   = !empty($recentDumps) ? $recentDumps[0] : null;
   </div>
   <div class="dbt-summary-card">
     <div class="dbt-section mb-1">Server Cadangan</div>
-    <?php
-      if ($replRole === 'STANDALONE') { echo '<span class="status-warn"><i class="ri ri-server-line"></i>Belum dikonfigurasi</span>'; }
-      elseif ($failoverActive)        { echo '<span class="status-warn"><i class="ri ri-alert-line"></i>Mode darurat aktif</span>'; }
-      elseif ($replOk)                { echo '<span class="status-ok"><i class="ri ri-checkbox-circle-line"></i>Sinkron (' . (int)($replStatus['lag_seconds'] ?? 0) . 's lag)</span>'; }
-      else                            { echo '<span class="status-err"><i class="ri ri-close-circle-line"></i>Masalah koneksi</span>'; }
-    ?>
+    <div id="summary-repl-status" aria-live="polite">
+      <?php
+        if ($replRole === 'STANDALONE') { echo '<span class="status-warn"><i class="ri ri-server-line"></i>Belum dikonfigurasi</span>'; }
+        elseif ($failoverActive)        { echo '<span class="status-warn"><i class="ri ri-alert-line"></i>Mode darurat aktif</span>'; }
+        elseif (!$replStatusFresh)      { echo '<span class="status-warn"><i class="ri ri-time-line"></i>Status lama · cek ulang</span>'; }
+        elseif ($replOk)                { echo '<span class="status-ok"><i class="ri ri-checkbox-circle-line"></i>Sinkron (' . (int)($replStatus['lag_seconds'] ?? 0) . 's lag)</span>'; }
+        else                            { echo '<span class="status-err"><i class="ri ri-close-circle-line"></i>Masalah koneksi</span>'; }
+      ?>
+    </div>
   </div>
   <div class="dbt-summary-card">
     <div class="dbt-section mb-1">File .env</div>
@@ -1551,6 +1556,12 @@ function toggleChap(header) {
       const el = document.getElementById('repl-status-display');
       const ok  = j.status === 'OK';
       const lag = j.lag_seconds !== undefined ? ' · keterlambatan ' + j.lag_seconds + 's' : '';
+      const summary = document.getElementById('summary-repl-status');
+      if (summary) {
+        summary.innerHTML = ok
+          ? '<span class="status-ok"><i class="ri ri-checkbox-circle-line"></i>Sinkron (' + Number(j.lag_seconds || 0) + 's lag)</span>'
+          : '<span class="status-err"><i class="ri ri-close-circle-line"></i>' + (j.status === 'NOT_CONFIGURED' ? 'Belum dijalankan' : 'Masalah koneksi') + '</span>';
+      }
       el.innerHTML = ok
         ? '<span class="status-ok"><i class="ri ri-checkbox-circle-line"></i>Sinkron' + lag + '</span>'
         : '<span class="status-err"><i class="ri ri-close-circle-line"></i>ERROR</span>';

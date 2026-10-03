@@ -51,6 +51,10 @@ $checks['SSH tunnel UI routes and permission allowlist exist'] =
 $checks['primary SSH fingerprint button is wired'] =
     strpos($mainView, 'id="btn-master-ssh-fingerprint"') !== false
     && strpos($mainView, "getElementById('btn-master-ssh-fingerprint')?.addEventListener") !== false;
+$checks['local SSH fingerprint can be calculated from public key without ssh-keygen'] =
+    strpos($controller, 'base64_decode($parts[1], true)') !== false
+    && strpos($controller, 'hash(\'sha256\', $blob, true)') !== false
+    && strpos($controller, 'Fingerprint dihitung dari public host key') !== false;
 $checks['tunnel SSH invocation pins host keys and limits listener to loopback'] =
     strpos($controller, "'-o', 'StrictHostKeyChecking=yes'") !== false
     && strpos($controller, "'-L', \"127.0.0.1:{\$localPort}:127.0.0.1:{\$remotePort}\"") !== false

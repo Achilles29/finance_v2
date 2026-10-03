@@ -1010,19 +1010,24 @@ class System_tools extends MY_Controller
         if (!$this->require_system_tools_mutation_csrf()) return;
 
         $fingerprints = [];
-        foreach (glob('/etc/ssh/ssh_host_*_key.pub') ?: [] as $publicKeyFile) {
+        $keyFiles = glob('/etc/ssh/ssh_host_*_key.pub') ?: [];
+        foreach ($keyFiles as $publicKeyFile) {
+            if (!is_readable($publicKeyFile)) continue;
+            $publicKey = trim((string)@file_get_contents($publicKeyFile));
+            $parts = preg_split('/\s+/', $publicKey, 3);
+            if (count($parts) !== 3 || !preg_match('/\Assh-[A-Za-z0-9@._+-]+\z/D', $parts[0])) continue;
+            $blob = base64_decode($parts[1], true);
+            if ($blob === false) continue;
+            $fingerprint = 'SHA256:' . rtrim(base64_encode(hash('sha256', $blob, true)), '=');
             $type = preg_replace('/^ssh_host_|_key\.pub$/', '', basename($publicKeyFile));
-            $result = $this->_tunnel_process(['/usr/bin/ssh-keygen', '-lf', $publicKeyFile]);
-            if ($result['code'] === 0 && preg_match('/\bSHA256:[A-Za-z0-9+\/=]+/', $result['stdout'], $match)) {
-                $fingerprints[] = ['key_type' => $type, 'fingerprint' => $match[0]];
-            }
+            $fingerprints[] = ['key_type' => $type, 'fingerprint' => $fingerprint];
         }
 
         if (!$fingerprints) {
-            $this->json_error('Fingerprint SSH host lokal tidak dapat dibaca oleh aplikasi.', 422);
+            $this->json_error('PHP-FPM tidak dapat membaca public host key di /etc/ssh/ssh_host_*.pub. Minta administrator mengizinkan baca direktori /etc/ssh untuk pool aplikasi; private key tidak perlu dibuka.', 422);
             return;
         }
-        $this->json_ok(['fingerprints' => $fingerprints, 'message' => 'Fingerprint ini berasal dari host yang menjalankan halaman DB Tools ini.']);
+        $this->json_ok(['fingerprints' => $fingerprints, 'message' => 'Fingerprint dihitung dari public host key server yang menjalankan halaman DB Tools ini.']);
     }
 
     public function action_tunnel_trust_host_key()

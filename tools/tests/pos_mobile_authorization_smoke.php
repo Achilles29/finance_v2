@@ -595,6 +595,8 @@ final class PosMobileSmokePrintModel
     public array $connectionRowsResult = ['rows' => [], 'meta' => ['total' => 0, 'page' => 1, 'limit' => 100, 'total_pages' => 1]];
     public array $routeRowsResult = ['rows' => []];
     public array $mobileRoutesResult = [];
+    public array $mobileRoutesByTerminal = [];
+    public array $mobileRoutesCalls = [];
     public array $lastMobileRoutesArguments = [];
     public array $layoutRowsResult = ['rows' => []];
     public ?array $findConnectionResult = null;
@@ -636,7 +638,8 @@ final class PosMobileSmokePrintModel
     public function mobile_routes(string $eventCode, int $outletId, int $terminalId): array
     {
         $this->lastMobileRoutesArguments = [$eventCode, $outletId, $terminalId];
-        return $this->mobileRoutesResult;
+        $this->mobileRoutesCalls[] = $this->lastMobileRoutesArguments;
+        return $this->mobileRoutesByTerminal[$terminalId] ?? $this->mobileRoutesResult;
     }
 
     public function find_connection(int $id): ?array
@@ -1583,6 +1586,7 @@ pos_mobile_smoke_expect(
         && (($sensitiveActionContract['actions']['ORDER_REPRINT']['verify_route'] ?? '') === 'pos-mobile/orders/reprint-step-up/verify')
         && (($sensitiveActionContract['actions']['ORDER_REPRINT']['submit_route'] ?? '') === 'pos-mobile/orders/reprint-targets/{order_id}')
         && (($sensitiveActionContract['actions']['ORDER_REPRINT']['submit_method'] ?? '') === 'POST')
+        && (($sensitiveActionContract['actions']['ORDER_REPRINT']['proof_required'] ?? null) === false)
         && (($sensitiveActionContract['actions']['CASHIER_CLOSE']['verify_route'] ?? '') === 'pos-mobile/cashier/close-step-up/verify')
         && (($sensitiveActionContract['actions']['CASHIER_CLOSE']['submit_route'] ?? '') === 'pos-mobile/cashier/close')
         && (($sensitiveActionContract['actions']['CASHIER_CLOSE']['submit_method'] ?? '') === 'POST')
@@ -2362,7 +2366,6 @@ $directOrderEndpointCases = [
         'arguments' => [1102],
         'payload' => ['printer_id' => 0, 'line_scope' => 'ALL'],
         'method' => 'POST',
-        'step_up_action' => 'ORDER_REPRINT',
         'downstream' => 'direct_print_targets_for_order_reprint',
         'result' => ['ok' => true, 'targets' => []],
     ],

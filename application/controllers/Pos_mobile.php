@@ -502,6 +502,7 @@ class Pos_mobile extends CI_Controller
                     'verify_route' => 'pos-mobile/orders/reprint-step-up/verify',
                     'submit_route' => 'pos-mobile/orders/reprint-targets/{order_id}',
                     'submit_method' => 'POST',
+                    'proof_required' => false,
                 ],
                 'CASHIER_CLOSE' => [
                     'verify_route' => 'pos-mobile/cashier/close-step-up/verify',
@@ -1409,23 +1410,26 @@ class Pos_mobile extends CI_Controller
             $this->json_error('Pilihan item cetak tidak valid.', 422);
             return;
         }
-        $needsReprintProof = !empty($payload['reprint'])
-            || $eventCode === 'ORDER_PRE_BILL'
-            || ($eventCode === 'ORDER_CONFIRM_KOT' && $lineScope === 'ALL');
-        if ($needsReprintProof) {
-            if ($eventCode !== 'ORDER_CONFIRM_KOT' && $eventCode !== 'ORDER_PRE_BILL') {
-                $this->json_error('Cetak ulang tidak valid.', 422);
-                return;
-            }
-            if (!$this->consume_mobile_order_reversal_step_up('ORDER_REPRINT', $documentId, $payload)) return;
+        $manualReprint = !empty($payload['reprint']);
+        if ($manualReprint && !in_array($eventCode, ['ORDER_CONFIRM_KOT', 'ORDER_PRE_BILL'], true)) {
+            $this->json_error('Cetak ulang tidak valid.', 422);
+            return;
         }
         $routes = $this->Pos_print_model->mobile_routes(
             $eventCode,
             (int)$this->mobileUser['outlet_id'],
             $routeTerminalId
         );
+        $deviceTerminalId = (int)$this->mobileUser['terminal_id'];
+        if (!$routes && $routeTerminalId !== $deviceTerminalId) {
+            $routes = $this->Pos_print_model->mobile_routes(
+                $eventCode,
+                (int)$this->mobileUser['outlet_id'],
+                $deviceTerminalId
+            );
+        }
         if (!$routes) {
-            $this->json_error('Belum ada aturan cetak Finance untuk dokumen dan outlet ini.', 422);
+            $this->json_error('Belum ada rute cetak Finance aktif untuk dokumen ini pada terminal kasir atau APK.', 422);
             return;
         }
         if ($selectedPrinterId > 0) {
@@ -1438,10 +1442,14 @@ class Pos_mobile extends CI_Controller
             }
         }
         $targets = [];
+        $manualRoutesSkipped = 0;
+        $autoRoutesSeen = 0;
         foreach ($routes as $route) {
-            if (!$needsReprintProof && strtoupper((string)($route['print_mode'] ?? 'AUTO')) !== 'AUTO') {
+            if (!$manualReprint && strtoupper((string)($route['print_mode'] ?? 'AUTO')) !== 'AUTO') {
+                $manualRoutesSkipped++;
                 continue;
             }
+            $autoRoutesSeen++;
             $matchedDivision = strtoupper((string)($route['content_scope'] ?? 'ALL_ITEMS')) === 'MATCHED_DIVISION';
             $rendered = $this->Pos_model->render_mobile_print_document(
                 $eventCode,
@@ -1481,6 +1489,9 @@ class Pos_mobile extends CI_Controller
         $this->json_ok([
             'direct_print_targets' => $this->mobile_print_targets($targets),
             'skipped' => count($targets) === 0,
+            'skip_reason' => count($targets) === 0
+                ? ($manualRoutesSkipped > 0 && $autoRoutesSeen === 0 ? 'MANUAL_ROUTE' : 'NO_MATCHING_ITEMS')
+                : '',
         ]);
     }
 
@@ -2125,10 +2136,6 @@ class Pos_mobile extends CI_Controller
         }
 
         $payload = $this->request_payload();
-        if (!$this->consume_mobile_order_reversal_step_up('ORDER_REPRINT', (int)$orderContext['order_id'], $payload)) {
-            return;
-        }
-        unset($payload['step_up_proof']);
         $result = $this->Pos_model->direct_print_targets_for_order_reprint((int)$id, [
             'printer_id' => max(0, (int)($payload['printer_id'] ?? 0)),
             'line_scope' => strtoupper(trim((string)($payload['line_scope'] ?? 'ALL'))),

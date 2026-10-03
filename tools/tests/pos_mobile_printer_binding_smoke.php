@@ -468,8 +468,80 @@ pmpb_check(
 ]);
 $model->orderDraft = ['header' => ['outlet_id' => 71, 'terminal_id' => 612]];
 $controller->mobile_print_documents();
-pmpb_check($output->status === 422 && $printModel->lastMobileRoutesArguments === ['ORDER_CONFIRM_KOT', 71, 612],
+pmpb_check($output->status === 422 && $printModel->mobileRoutesCalls === [
+    ['ORDER_CONFIRM_KOT', 71, 612],
+    ['ORDER_CONFIRM_KOT', 71, 501],
+],
     'mobile print fails clearly when Finance has no route for the document');
+
+[$controller, $auth, $output, $model, $printModel] = pmpb_bearer_controller($cashierView, [
+    'event_code' => 'ORDER_CONFIRM_KOT',
+    'document_id' => 123,
+    'line_scope' => 'ALL',
+    'reprint' => true,
+]);
+$model->orderDraft = ['header' => ['outlet_id' => 71, 'terminal_id' => 612]];
+$model->businessResults['render_mobile_print_document'] = [
+    'ok' => true, 'text' => "TIKET\n", 'layout_id' => 51, 'document_type' => 'KITCHEN_TICKET',
+];
+$printModel->mobileRoutesByTerminal[501] = [[
+    'id' => 91, 'connection_id' => 81, 'connection_name' => 'BAR',
+    'layout_id' => 51, 'paper_width_mm' => 58, 'chars_per_line' => 32,
+    'print_mode' => 'ASK',
+]];
+$controller->mobile_print_documents();
+$mobilePrint = json_decode($output->body, true);
+pmpb_check(
+    $output->status === 200
+        && $printModel->mobileRoutesCalls === [
+            ['ORDER_CONFIRM_KOT', 71, 612],
+            ['ORDER_CONFIRM_KOT', 71, 501],
+        ]
+        && ($mobilePrint['direct_print_targets'][0]['printer_id'] ?? 0) === 81,
+    'manual reprint needs no proof and can use an active Finance route for the APK terminal'
+);
+
+[$controller, $auth, $output, $model, $printModel] = pmpb_bearer_controller($cashierView, [
+    'event_code' => 'ORDER_CONFIRM_KOT',
+    'document_id' => 123,
+    'line_scope' => 'LATEST',
+]);
+$model->orderDraft = ['header' => ['outlet_id' => 71, 'terminal_id' => 612]];
+$printModel->mobileRoutesByTerminal[501] = [[
+    'id' => 91, 'connection_id' => 81, 'layout_id' => 51, 'print_mode' => 'ASK',
+]];
+$controller->mobile_print_documents();
+$mobilePrint = json_decode($output->body, true);
+pmpb_check(
+    $output->status === 200
+        && ($mobilePrint['skipped'] ?? false) === true
+        && ($mobilePrint['skip_reason'] ?? '') === 'MANUAL_ROUTE'
+        && ($mobilePrint['direct_print_targets'] ?? null) === [],
+    'automatic print explains when Finance route requires manual printing'
+);
+
+[$controller, $auth, $output, $model, $printModel] = pmpb_bearer_controller($cashierView, [
+    'event_code' => 'ORDER_PAID_RECEIPT',
+    'document_id' => 55,
+]);
+$model->mobilePrintContexts['PAYMENT'][55] = [
+    'order_id' => 123, 'outlet_id' => 71, 'terminal_id' => 612,
+];
+$model->businessResults['render_mobile_print_document'] = [
+    'ok' => true, 'text' => "STRUK\n", 'layout_id' => 52, 'document_type' => 'RECEIPT',
+];
+$printModel->mobileRoutesByTerminal[501] = [[
+    'id' => 92, 'connection_id' => 82, 'connection_name' => 'KASIR',
+    'layout_id' => 52, 'paper_width_mm' => 80, 'chars_per_line' => 48,
+    'print_mode' => 'AUTO',
+]];
+$controller->mobile_print_documents();
+$mobilePrint = json_decode($output->body, true);
+pmpb_check(
+    $output->status === 200
+        && ($mobilePrint['direct_print_targets'][0]['printer_id'] ?? 0) === 82,
+    'payment print can use the active Finance route for the APK terminal when the order terminal has none'
+);
 
 if ($failures !== []) {
     fwrite(STDERR, count($failures) . ' POS mobile printer binding smoke check(s) failed.' . PHP_EOL);

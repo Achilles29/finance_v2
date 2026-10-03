@@ -5,6 +5,8 @@ $controller = file_get_contents($root . '/application/controllers/System_tools.p
 $mainView = file_get_contents($root . '/application/views/system/dbtools.php');
 $settingsView = file_get_contents($root . '/application/views/system/settings.php');
 $script = file_get_contents($root . '/scripts/replication/tunnel_start.sh');
+$keyAuthorizer = file_get_contents($root . '/scripts/replication/authorize_db_tunnel_key_root.sh');
+$keyAuthorizerInstaller = file_get_contents($root . '/scripts/replication/install_tunnel_key_authorizer.sh');
 $routes = file_get_contents($root . '/application/config/routes.php');
 $featureAccess = file_get_contents($root . '/application/config/feature_access.php');
 $checks = [];
@@ -34,7 +36,8 @@ $checks['settings save reports env write failure instead of false success'] =
     && strpos($controller, 'file_put_contents($envPath, implode("\\n", $lines) . "\\n", LOCK_EX)') !== false;
 
 foreach ([
-    'action_tunnel_generate_key', 'action_local_ssh_fingerprint',
+    'action_tunnel_generate_key', 'action_local_ssh_fingerprint', 'action_authorize_tunnel_key',
+    'action_tunnel_key_authorization_status',
     'action_tunnel_scan_host_key', 'action_tunnel_trust_host_key',
     'action_tunnel_status', 'action_tunnel_start', 'action_tunnel_stop',
 ] as $method) {
@@ -70,6 +73,25 @@ $checks['tunnel UI status exposes only safe start checkpoint'] =
     && strpos($controller, '\'last_start\' => $startDiagnostic') !== false
     && strpos($mainView, 'Checkpoint start terakhir:') !== false
     && strpos($controller, "'before_ssh_start'") !== false;
+$checks['primary UI accepts only restricted DB tunnel keys through root helper'] =
+    strpos($controller, 'function action_authorize_tunnel_key()') !== false
+    && strpos($controller, "'/var/lib/finance-secrets/finance-authorize-db-tunnel-key'") !== false
+    && strpos($controller, "require_system_tools_mutation_csrf()") !== false
+    && strpos($mainView, 'id="btn-master-authorize-tunnel-key"') !== false
+    && strpos($mainView, "dbtools/action/authorize-tunnel-key") !== false
+    && strpos($mainView, "dbtools/action/tunnel-key-authorization-status") !== false
+    && strpos($routes, "'dbtools/action/authorize-tunnel-key'") !== false
+    && strpos($routes, "'dbtools/action/tunnel-key-authorization-status'") !== false
+    && strpos($featureAccess, 'action_authorize_tunnel_key') !== false;
+$checks['tunnel-key helper strictly restricts forwarding and appends idempotently'] =
+    strpos($keyAuthorizer, 'permitopen="127.0.0.1:3306"') !== false
+    && strpos($keyAuthorizer, 'command="/bin/false"') !== false
+    && strpos($keyAuthorizer, 'flock -x 9') !== false
+    && strpos($keyAuthorizer, 'grep -Fqx') !== false
+    && strpos($keyAuthorizerInstaller, 'finance-process-db-tunnel-key-requests') !== false
+    && strpos($keyAuthorizerInstaller, '/etc/cron.d/finance-db-tunnel-key-worker') !== false
+    && strpos($keyAuthorizerInstaller, 'NOPASSWD: %s') !== false
+    && strpos($keyAuthorizerInstaller, 'visudo -cf') !== false;
 
 $failed = false;
 foreach ($checks as $name => $passed) {

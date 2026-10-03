@@ -50,6 +50,7 @@ class System_tools extends MY_Controller
             'failover_time'   => $failoverActive ? trim(file_get_contents($failoverFile)) : null,
             'finance_root'    => $financeRoot,
             'is_windows'      => strtoupper(substr(PHP_OS, 0, 3)) === 'WIN',
+            'tunnel_key_authorizer_ready' => is_file('/var/lib/finance-secrets/finance-authorize-db-tunnel-key'),
             'system_tools_mutation_csrf_token' => $systemToolsMutationCsrfToken,
         ]);
     }
@@ -1030,6 +1031,74 @@ class System_tools extends MY_Controller
         $this->json_ok(['fingerprints' => $fingerprints, 'message' => 'Fingerprint dihitung dari public host key server yang menjalankan halaman DB Tools ini.']);
     }
 
+    public function action_authorize_tunnel_key()
+    {
+        $this->require_permission(self::PAGE_CODE, 'edit');
+        $this->require_permission(self::PAGE_CODE, self::SENSITIVE_READ_ACTION);
+        if (!$this->require_system_tools_mutation_csrf()) return;
+        if (strtoupper($this->_cfg('repl.server_role', 'STANDALONE')) !== 'MASTER') {
+            $this->json_error('Otorisasi key hanya tersedia pada Server Utama.', 403);
+            return;
+        }
+
+        $input = json_decode($this->input->raw_input_stream, true);
+        $keyLine = trim((string)($input['authorized_key'] ?? ''));
+        $prefix = 'command="/bin/false",restrict,port-forwarding,permitopen="127.0.0.1:3306" ssh-ed25519 ';
+        if (!str_starts_with($keyLine, $prefix)
+            || !preg_match('/\\Acommand="\\/bin\\/false",restrict,port-forwarding,permitopen="127\\.0\\.0\\.1:3306" ssh-ed25519 [A-Za-z0-9+\\/=]+(?: finance-db-tunnel)?\\z/D', $keyLine)) {
+            $this->json_error('Format key tidak sesuai. Buat key dari UI Server 2 dan tempel baris terbatas lengkap tanpa mengubahnya.', 422);
+            return;
+        }
+
+        $inbox = '/var/lib/finance-secrets/db-tunnel-key-requests';
+        if (!is_dir($inbox) || !is_writable($inbox)) {
+            $this->json_error('Antrean otorisasi belum siap. Administrator perlu memasang worker satu kali pada Server Utama.', 503);
+            return;
+        }
+
+        try {
+            $requestId = bin2hex(random_bytes(16));
+            $requestPath = $inbox . '/' . $requestId . '.req';
+            if (file_put_contents($requestPath, $keyLine . "\n", LOCK_EX) === false) {
+                $this->json_error('Tidak dapat mengirim key ke antrean otorisasi.', 500);
+                return;
+            }
+            @chmod($requestPath, 0600);
+            $this->json_ok([
+                'request_id' => $requestId,
+                'message' => 'Permintaan masuk antrean keamanan. UI akan memeriksa hasilnya; proses worker berjalan maksimal setiap satu menit.',
+            ]);
+        } catch (Throwable $e) {
+            log_message('error', 'DB tunnel key request could not be queued.');
+            $this->json_error('Tidak dapat membuat permintaan otorisasi.', 500);
+        }
+    }
+
+    public function action_tunnel_key_authorization_status()
+    {
+        $this->require_permission(self::PAGE_CODE, 'view');
+        $this->require_permission(self::PAGE_CODE, self::SENSITIVE_READ_ACTION);
+        if (!$this->require_system_tools_mutation_csrf()) return;
+
+        $input = json_decode($this->input->raw_input_stream, true);
+        $requestId = (string)($input['request_id'] ?? '');
+        if (!preg_match('/\\A[a-f0-9]{32}\\z/D', $requestId)) {
+            $this->json_error('ID permintaan tidak valid.', 422);
+            return;
+        }
+        $statusPath = '/var/lib/finance-secrets/db-tunnel-key-status/' . $requestId . '.status';
+        if (!is_file($statusPath)) {
+            $this->json_ok(['complete' => false, 'message' => 'Masih menunggu worker keamanan.']);
+            return;
+        }
+        $status = trim((string)@file_get_contents($statusPath));
+        if ($status === 'ok') {
+            $this->json_ok(['complete' => true, 'authorized' => true, 'message' => 'Key tunnel berhasil diotorisasi. Coba Mulai Tunnel dari Server 2.']);
+            return;
+        }
+        $this->json_ok(['complete' => true, 'authorized' => false, 'message' => 'Worker menolak key. Pastikan baris restricted key berasal dari UI Server 2 dan tidak diubah.']);
+    }
+
     public function action_tunnel_trust_host_key()
     {
         $this->require_permission(self::PAGE_CODE, 'edit');
@@ -1417,7 +1486,7 @@ class System_tools extends MY_Controller
         return $root;
     }
 
-    private function _tunnel_process(array $command): array
+    private function _tunnel_process(array $command, ?string $stdin = null): array
     {
         if (!function_exists('proc_open')) throw new RuntimeException('proc_open tidak tersedia pada PHP-FPM.');
         $pipes = [];
@@ -1427,6 +1496,7 @@ class System_tools extends MY_Controller
             2 => ['pipe', 'w'],
         ], $pipes, null, null, ['bypass_shell' => true]);
         if (!is_resource($process)) throw new RuntimeException('PHP-FPM tidak dapat menjalankan utilitas SSH.');
+        if ($stdin !== null) fwrite($pipes[0], $stdin);
         fclose($pipes[0]);
         stream_set_blocking($pipes[1], false);
         stream_set_blocking($pipes[2], false);

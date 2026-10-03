@@ -350,6 +350,22 @@ $lastDump   = !empty($recentDumps) ? $recentDumps[0] : null;
         </button>
       </div>
       <div id="out-apply-master" class="dbt-output"></div>
+      <div class="alert <?php echo !empty($tunnel_key_authorizer_ready) ? 'alert-success' : 'alert-info'; ?> py-2 small">
+        <div class="fw-semibold">Otorisasi key SSH Server 2 melalui UI</div>
+        <div class="mt-1">Tempel baris <code>authorized_keys</code> terbatas dari Server 2 di bawah, lalu otorisasi. Key hanya boleh membuka tunnel ke MySQL Server 1, tanpa akses shell.</div>
+        <?php if (!empty($tunnel_key_authorizer_ready)): ?>
+          <div class="mt-1">Worker keamanan siap. Permintaan diproses otomatis maksimal dalam satu menit; tidak perlu membuka akses eksekusi PHP.</div>
+        <?php endif; ?>
+        <label class="form-label small mt-2 mb-1" for="master-tunnel-authorized-key">Baris terbatas dari Server 2</label>
+        <textarea id="master-tunnel-authorized-key" class="form-control form-control-sm mb-2" rows="2" spellcheck="false" placeholder='command="/bin/false",restrict,port-forwarding,permitopen="127.0.0.1:3306" ssh-ed25519 ...'></textarea>
+        <button type="button" id="btn-master-authorize-tunnel-key" class="btn btn-outline-primary btn-sm">Otorisasi Key Tunnel</button>
+        <div id="out-master-authorize-tunnel-key" class="dbt-output mt-2" aria-live="polite"></div>
+        <?php if (empty($tunnel_key_authorizer_ready)): ?><details class="mt-2">
+          <summary>Bootstrap keamanan satu kali pada Server Utama</summary>
+          <div class="mt-2">Agar PHP tidak diberi akses tulis ke file root atau kemampuan menjalankan perintah, administrator perlu memasang worker terbatas satu kali melalui SSH. Cek user pool PHP-FPM, lalu jalankan perintah berikut sebagai root (contoh user: <code>www</code>):</div>
+          <pre class="mb-0 mt-1"><code>scripts/replication/install_tunnel_key_authorizer.sh www</code></pre>
+        </details><?php endif; ?>
+      </div>
       <hr class="my-3">
       <div class="row g-3 align-items-end">
         <div class="col-md-5">
@@ -1451,6 +1467,25 @@ function toggleChap(header) {
       const list = (j.fingerprints || []).map(x => `${x.key_type}: ${x.fingerprint}`).join('\n');
       output('out-apply-master', `${j.message}\n${list}\nCatat fingerprint ini untuk dibandingkan dari Server 2.`, true);
     } catch(e) { output('out-apply-master', e.message, true); }
+    finally { setLoading(this, false); }
+  });
+  document.getElementById('btn-master-authorize-tunnel-key')?.addEventListener('click', async function() {
+    setLoading(this, true);
+    try {
+      const j = await post('dbtools/action/authorize-tunnel-key', {
+        authorized_key: document.getElementById('master-tunnel-authorized-key')?.value || ''
+      });
+      output('out-master-authorize-tunnel-key', j.message, true);
+      for (let attempt = 0; attempt < 14; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        const status = await post('dbtools/action/tunnel-key-authorization-status', { request_id: j.request_id });
+        if (status.complete) {
+          output('out-master-authorize-tunnel-key', status.message, true);
+          break;
+        }
+        if (attempt === 13) output('out-master-authorize-tunnel-key', 'Permintaan masih antre. Klik otorisasi lagi nanti untuk status terbaru.', true);
+      }
+    } catch(e) { output('out-master-authorize-tunnel-key', e.message, true); }
     finally { setLoading(this, false); }
   });
   document.getElementById('btn-tunnel-trust')?.addEventListener('click', async function() {

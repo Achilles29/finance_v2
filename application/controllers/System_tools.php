@@ -188,8 +188,14 @@ class System_tools extends MY_Controller
         }
         $this->db->trans_commit();
 
-        // Generate .env file dari config yang tersimpan
-        $this->_writeEnvFile();
+        // Generate .env file dari config yang tersimpan; never hide a filesystem failure.
+        if (!$this->_writeEnvFile()) {
+            $this->json_error(
+                'Pengaturan database tersimpan, tetapi file scripts/backup/.env tidak dapat ditulis. Siapkan izin tulis khusus pada file .env untuk user PHP-FPM, lalu simpan ulang.',
+                500
+            );
+            return;
+        }
 
         $this->json_ok(['message' => 'Pengaturan berhasil disimpan dan .env diperbarui.']);
     }
@@ -984,7 +990,7 @@ class System_tools extends MY_Controller
         return $row ? (string)($row['config_value'] ?? $default) : $default;
     }
 
-    private function _writeEnvFile(): void
+    private function _writeEnvFile(): bool
     {
         $envPath = FCPATH . 'scripts/backup/.env';
 
@@ -1026,7 +1032,27 @@ class System_tools extends MY_Controller
             "TUNNEL_LOCAL_PORT=" . $q($this->_cfg('tunnel.local_port', '3307')),
             "TUNNEL_REMOTE_PORT=" . $q($this->_cfg('tunnel.remote_port', '3306')),
         ];
-        @file_put_contents($envPath, implode("\n", $lines) . "\n");
+        $isNewFile = !is_file($envPath);
+        $previousUmask = umask(0077);
+        try {
+            $written = @file_put_contents($envPath, implode("\n", $lines) . "\n", LOCK_EX);
+        } finally {
+            umask($previousUmask);
+        }
+
+        if ($written === false) {
+            log_message('error', 'System Tools could not write the backup environment file.');
+            return false;
+        }
+
+        // A newly-created file contains DB credentials; default it to owner-only.
+        if ($isNewFile && !@chmod($envPath, 0600)) {
+            @unlink($envPath);
+            log_message('error', 'System Tools could not secure the new backup environment file.');
+            return false;
+        }
+
+        return true;
     }
 
     private function system_tools_mutation_csrf(): string

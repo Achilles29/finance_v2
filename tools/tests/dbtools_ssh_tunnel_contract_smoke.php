@@ -26,6 +26,10 @@ $checks['both settings forms persist SSH port'] =
     strpos($mainView, "'tunnel.ssh_port': getVal('t_ssh_port')") !== false
     && strpos($settingsView, "'tunnel.ssh_port':   document.getElementById('cfg_tunnel_ssh_port')") !== false;
 $checks['replication save allows SSH port'] = strpos($controller, "'tunnel.enabled', 'tunnel.ssh_host', 'tunnel.ssh_port', 'tunnel.ssh_user'") !== false;
+$checks['settings save reports env write failure instead of false success'] =
+    strpos($controller, 'if (!$this->_writeEnvFile())') !== false
+    && strpos($controller, 'private function _writeEnvFile(): bool') !== false
+    && strpos($controller, 'file_put_contents($envPath, implode("\\n", $lines) . "\\n", LOCK_EX)') !== false;
 
 $failed = false;
 foreach ($checks as $name => $passed) {

@@ -913,6 +913,330 @@ class System_tools extends MY_Controller
         }
     }
 
+    public function action_tunnel_generate_key()
+    {
+        $this->require_permission(self::PAGE_CODE, 'edit');
+        $this->require_permission(self::PAGE_CODE, self::SENSITIVE_READ_ACTION);
+        if (!$this->require_system_tools_mutation_csrf()) return;
+
+        try {
+            $dir = $this->_tunnel_state_dir();
+            $keyPath = $dir . '/client_ed25519';
+            $pubPath = $keyPath . '.pub';
+            if (is_file($keyPath) && is_file($pubPath)) {
+                $publicKey = trim((string)file_get_contents($pubPath));
+            } elseif (file_exists($keyPath) || file_exists($pubPath)) {
+                $this->json_error('Pasangan key SSH tidak lengkap; hubungi administrator untuk merapikan key.', 500);
+                return;
+            } else {
+                $result = $this->_tunnel_process([
+                    '/usr/bin/ssh-keygen', '-q', '-t', 'ed25519', '-N', '',
+                    '-C', 'finance-db-tunnel', '-f', $keyPath,
+                ]);
+                if ($result['code'] !== 0 || !is_file($keyPath) || !is_file($pubPath)) {
+                    $this->json_error('Gagal membuat SSH key. Pastikan ssh-keygen tersedia dan storage tunnel writable.', 500);
+                    return;
+                }
+                @chmod($keyPath, 0600);
+                @chmod($pubPath, 0644);
+                $publicKey = trim((string)file_get_contents($pubPath));
+            }
+
+            if (!preg_match('/\Assh-ed25519\s+[A-Za-z0-9+\/=]+(?:\s+.*)?\z/D', $publicKey)) {
+                $this->json_error('Format public key tidak valid.', 500);
+                return;
+            }
+
+            $restrictedKey = 'command="/bin/false",restrict,port-forwarding,permitopen="127.0.0.1:3306" ' . $publicKey;
+            $this->json_ok([
+                'message' => 'Key siap. Pasang baris terbatas ini pada authorized_keys akun SSH server utama.',
+                'public_key' => $publicKey,
+                'authorized_key' => $restrictedKey,
+            ]);
+        } catch (Throwable $e) {
+            log_message('error', 'System Tools SSH key setup failed.');
+            $this->json_error($e->getMessage(), 500);
+        }
+    }
+
+    public function action_tunnel_scan_host_key()
+    {
+        $this->require_permission(self::PAGE_CODE, 'view');
+        $this->require_permission(self::PAGE_CODE, self::SENSITIVE_READ_ACTION);
+        if (!$this->require_system_tools_mutation_csrf()) return;
+
+        try {
+            [$host, $port] = $this->_tunnel_endpoint();
+            $scan = $this->_tunnel_process([
+                '/usr/bin/ssh-keyscan', '-T', '5', '-p', (string)$port, $host,
+            ]);
+            $lines = array_values(array_filter(array_map('trim', preg_split('/\R/', $scan['stdout']) ?: []), static function($line) {
+                return $line !== '' && $line[0] !== '#';
+            }));
+            if (!$lines) {
+                $this->json_error('Tidak dapat mengambil SSH host key. Periksa alamat dan port SSH.', 422);
+                return;
+            }
+
+            $fingerprints = [];
+            foreach ($lines as $line) {
+                $fingerprint = $this->_tunnel_fingerprint($line);
+                if ($fingerprint !== '') $fingerprints[] = ['fingerprint' => $fingerprint, 'key_type' => explode(' ', $line)[1] ?? ''];
+            }
+            if (!$fingerprints) {
+                $this->json_error('SSH host key diterima, tetapi fingerprint tidak dapat dihitung.', 422);
+                return;
+            }
+
+            $dir = $this->_tunnel_state_dir();
+            file_put_contents($dir . '/hostkey.pending', implode("\n", $lines) . "\n", LOCK_EX);
+            @chmod($dir . '/hostkey.pending', 0600);
+            $this->json_ok([
+                'host' => $host,
+                'port' => $port,
+                'fingerprints' => $fingerprints,
+                'message' => 'Bandingkan fingerprint dengan fingerprint SSH host utama yang diperoleh melalui kanal tepercaya sebelum menyetujuinya.',
+            ]);
+        } catch (Throwable $e) {
+            log_message('error', 'System Tools SSH host-key scan failed.');
+            $this->json_error($e->getMessage(), 500);
+        }
+    }
+
+    public function action_local_ssh_fingerprint()
+    {
+        $this->require_permission(self::PAGE_CODE, 'view');
+        $this->require_permission(self::PAGE_CODE, self::SENSITIVE_READ_ACTION);
+        if (!$this->require_system_tools_mutation_csrf()) return;
+
+        $fingerprints = [];
+        foreach (glob('/etc/ssh/ssh_host_*_key.pub') ?: [] as $publicKeyFile) {
+            $type = preg_replace('/^ssh_host_|_key\.pub$/', '', basename($publicKeyFile));
+            $result = $this->_tunnel_process(['/usr/bin/ssh-keygen', '-lf', $publicKeyFile]);
+            if ($result['code'] === 0 && preg_match('/\bSHA256:[A-Za-z0-9+\/=]+/', $result['stdout'], $match)) {
+                $fingerprints[] = ['key_type' => $type, 'fingerprint' => $match[0]];
+            }
+        }
+
+        if (!$fingerprints) {
+            $this->json_error('Fingerprint SSH host lokal tidak dapat dibaca oleh aplikasi.', 422);
+            return;
+        }
+        $this->json_ok(['fingerprints' => $fingerprints, 'message' => 'Fingerprint ini berasal dari host yang menjalankan halaman DB Tools ini.']);
+    }
+
+    public function action_tunnel_trust_host_key()
+    {
+        $this->require_permission(self::PAGE_CODE, 'edit');
+        $this->require_permission(self::PAGE_CODE, self::SENSITIVE_READ_ACTION);
+        if (!$this->require_system_tools_mutation_csrf()) return;
+
+        $payload = $this->request_payload();
+        $expected = trim((string)($payload['fingerprint'] ?? ''));
+        if (!preg_match('/\ASHA256:[A-Za-z0-9+\/=]+\z/D', $expected)) {
+            $this->json_error('Fingerprint SSH tidak valid.', 422);
+            return;
+        }
+
+        try {
+            $dir = $this->_tunnel_state_dir();
+            $pending = $dir . '/hostkey.pending';
+            if (!is_file($pending)) {
+                $this->json_error('Scan host key dahulu sebelum menyetujuinya.', 422);
+                return;
+            }
+
+            $matchedLine = '';
+            foreach (file($pending, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+                if (hash_equals($expected, $this->_tunnel_fingerprint($line))) {
+                    $matchedLine = trim($line);
+                    break;
+                }
+            }
+            if ($matchedLine === '') {
+                $this->json_error('Fingerprint tidak cocok dengan hasil scan terbaru. Scan ulang dan verifikasi kembali.', 422);
+                return;
+            }
+
+            $knownHosts = $dir . '/known_hosts';
+            $existing = is_file($knownHosts) ? file($knownHosts, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) : [];
+            $entryHost = $this->_known_host_name();
+            $keyParts = preg_split('/\s+/', $matchedLine, 3);
+            if (count($keyParts) !== 3) {
+                $this->json_error('Data host key tidak valid.', 422);
+                return;
+            }
+            $newLine = $entryHost . ' ' . $keyParts[1] . ' ' . $keyParts[2];
+
+            foreach ($existing as $line) {
+                $parts = preg_split('/\s+/', trim($line), 3);
+                if (count($parts) === 3 && $parts[0] === $entryHost && $parts[1] === $keyParts[1] && !hash_equals($parts[2], $keyParts[2])) {
+                    $this->json_error('Host key berbeda dari key yang sudah dipercaya. Jangan timpa otomatis; verifikasi perubahan host key terlebih dahulu.', 409);
+                    return;
+                }
+            }
+
+            if (!in_array($newLine, $existing, true)) $existing[] = $newLine;
+            file_put_contents($knownHosts, implode("\n", $existing) . "\n", LOCK_EX);
+            @chmod($knownHosts, 0600);
+            @unlink($pending);
+            $this->json_ok(['message' => 'Fingerprint cocok; SSH host key dipercaya untuk tunnel ini.']);
+        } catch (Throwable $e) {
+            log_message('error', 'System Tools SSH host-key trust failed.');
+            $this->json_error($e->getMessage(), 500);
+        }
+    }
+
+    public function action_tunnel_status()
+    {
+        $this->require_permission(self::PAGE_CODE, 'view');
+        $this->require_permission(self::PAGE_CODE, self::SENSITIVE_READ_ACTION);
+        if (!$this->require_system_tools_mutation_csrf()) return;
+
+        try {
+            $dir = $this->_tunnel_state_dir();
+            $port = (int)$this->_cfg('tunnel.local_port', '3307');
+            $socket = $dir . '/control.sock';
+            $control = false;
+            if (is_file($dir . '/client_ed25519') && file_exists($socket)) {
+                [$host, $sshPort] = $this->_tunnel_endpoint();
+                $user = $this->_tunnel_user();
+                $probe = $this->_tunnel_process([
+                    '/usr/bin/ssh', '-S', $socket, '-p', (string)$sshPort,
+                    '-O', 'check', $user . '@' . $host,
+                ]);
+                $control = $probe['code'] === 0;
+            }
+            $errno = 0;
+            $error = '';
+            $fp = @fsockopen('127.0.0.1', $port, $errno, $error, 0.5);
+            $localListener = is_resource($fp);
+            if ($localListener) fclose($fp);
+            $this->json_ok([
+                'running' => $control && $localListener,
+                'control_master' => $control,
+                'local_listener' => $localListener,
+                'local_port' => $port,
+            ]);
+        } catch (Throwable $e) {
+            $this->json_error($e->getMessage(), 500);
+        }
+    }
+
+    public function action_tunnel_start()
+    {
+        $this->require_permission(self::PAGE_CODE, 'edit');
+        $this->require_permission(self::PAGE_CODE, self::SENSITIVE_READ_ACTION);
+        if (!$this->require_system_tools_mutation_csrf()) return;
+
+        if ($this->_cfg('repl.server_role', '') !== 'SLAVE' || $this->_cfg('tunnel.enabled', '0') !== '1') {
+            $this->json_error('Pilih peran Server Cadangan (SLAVE) dan aktifkan SSH Tunnel terlebih dahulu.', 422);
+            return;
+        }
+
+        try {
+            [$host, $sshPort] = $this->_tunnel_endpoint();
+            $user = $this->_tunnel_user();
+            $localPort = (int)$this->_cfg('tunnel.local_port', '3307');
+            $remotePort = (int)$this->_cfg('tunnel.remote_port', '3306');
+            if ($localPort < 1 || $localPort > 65535 || $remotePort < 1 || $remotePort > 65535) {
+                $this->json_error('Port tunnel harus berada pada rentang 1-65535.', 422);
+                return;
+            }
+
+            $dir = $this->_tunnel_state_dir();
+            $keyPath = $dir . '/client_ed25519';
+            $knownHosts = $dir . '/known_hosts';
+            if (!is_file($keyPath) || !is_file($knownHosts)) {
+                $this->json_error('Buat SSH key dan verifikasi host key melalui panel ini terlebih dahulu.', 422);
+                return;
+            }
+            $socket = $dir . '/control.sock';
+            if (file_exists($socket)) {
+                $current = $this->_tunnel_process([
+                    '/usr/bin/ssh', '-S', $socket, '-p', (string)$sshPort,
+                    '-O', 'check', $user . '@' . $host,
+                ]);
+                if ($current['code'] === 0) {
+                    $this->json_ok(['message' => 'SSH tunnel sudah aktif.', 'local_port' => $localPort]);
+                    return;
+                }
+                @unlink($socket);
+            }
+
+            $errno = 0;
+            $error = '';
+            $existing = @fsockopen('127.0.0.1', $localPort, $errno, $error, 0.3);
+            if (is_resource($existing)) {
+                fclose($existing);
+                $this->json_error("Port lokal {$localPort} sudah dipakai proses lain; tunnel tidak dijalankan.", 409);
+                return;
+            }
+
+            $result = $this->_tunnel_process([
+                '/usr/bin/ssh', '-M', '-S', $socket,
+                '-o', 'ControlMaster=yes',
+                '-o', 'ExitOnForwardFailure=yes',
+                '-o', 'BatchMode=yes',
+                '-o', 'StrictHostKeyChecking=yes',
+                '-o', 'UserKnownHostsFile=' . $knownHosts,
+                '-o', 'IdentitiesOnly=yes',
+                '-o', 'ServerAliveInterval=30',
+                '-o', 'ServerAliveCountMax=3',
+                '-i', $keyPath,
+                '-p', (string)$sshPort,
+                '-L', "127.0.0.1:{$localPort}:127.0.0.1:{$remotePort}",
+                '-fN', $user . '@' . $host,
+            ]);
+            if ($result['code'] !== 0) {
+                $detail = trim($result['stderr'] ?: $result['stdout']);
+                $this->json_error('SSH tunnel gagal dimulai.' . ($detail !== '' ? ' ' . $detail : ''), 502);
+                return;
+            }
+
+            usleep(250000);
+            $probe = @fsockopen('127.0.0.1', $localPort, $errno, $error, 1.0);
+            if (!is_resource($probe)) {
+                $this->json_error('Proses SSH tidak membuka listener lokal. Periksa key dan hak port-forward akun SSH.', 502);
+                return;
+            }
+            fclose($probe);
+            $this->json_ok(['message' => 'SSH tunnel aktif.', 'local_port' => $localPort]);
+        } catch (Throwable $e) {
+            log_message('error', 'System Tools SSH tunnel start failed.');
+            $this->json_error($e->getMessage(), 500);
+        }
+    }
+
+    public function action_tunnel_stop()
+    {
+        $this->require_permission(self::PAGE_CODE, 'edit');
+        $this->require_permission(self::PAGE_CODE, self::SENSITIVE_READ_ACTION);
+        if (!$this->require_system_tools_mutation_csrf()) return;
+
+        try {
+            [$host, $sshPort] = $this->_tunnel_endpoint();
+            $user = $this->_tunnel_user();
+            $socket = $this->_tunnel_state_dir() . '/control.sock';
+            if (!file_exists($socket)) {
+                $this->json_ok(['message' => 'Tidak ada tunnel UI yang aktif.']);
+                return;
+            }
+            $result = $this->_tunnel_process([
+                '/usr/bin/ssh', '-S', $socket, '-p', (string)$sshPort,
+                '-O', 'exit', $user . '@' . $host,
+            ]);
+            @unlink($socket);
+            if ($result['code'] !== 0) {
+                $this->json_error('Gagal menghentikan tunnel. Listener mungkin sudah berhenti; periksa status tunnel.', 502);
+                return;
+            }
+            $this->json_ok(['message' => 'SSH tunnel dihentikan.']);
+        } catch (Throwable $e) {
+            $this->json_error($e->getMessage(), 500);
+        }
+    }
+
     // ── AJAX: replication status ───────────────────────────────────
     public function backup_status()
     {
@@ -988,6 +1312,121 @@ class System_tools extends MY_Controller
         if (!$this->db->table_exists('sys_app_config')) return $default;
         $row = $this->db->select('config_value')->where('config_key', $key)->get('sys_app_config')->row_array();
         return $row ? (string)($row['config_value'] ?? $default) : $default;
+    }
+
+    private function _tunnel_endpoint(): array
+    {
+        $host = trim($this->_cfg('tunnel.ssh_host', ''));
+        $port = (int)$this->_cfg('tunnel.ssh_port', '22');
+        if ($host === '' || strlen($host) > 253
+            || !preg_match('/\A(?:[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?|\d{1,3}(?:\.\d{1,3}){3})\z/D', $host)
+            || $port < 1 || $port > 65535) {
+            throw new RuntimeException('SSH host atau port tidak valid. Simpan pengaturan tunnel terlebih dahulu.');
+        }
+        return [$host, $port];
+    }
+
+    private function _tunnel_user(): string
+    {
+        $user = trim($this->_cfg('tunnel.ssh_user', ''));
+        if (!preg_match('/\A[a-z_][a-z0-9_-]{0,31}\$?\z/D', $user)) {
+            throw new RuntimeException('SSH user tidak valid.');
+        }
+        return $user;
+    }
+
+    private function _tunnel_state_dir(): string
+    {
+        $root = '/var/tmp/finance-dbtools-ssh-' . substr(hash('sha256', FCPATH), 0, 16);
+        if (is_link($root)) throw new RuntimeException('Lokasi state SSH tunnel tidak aman.');
+        if (!is_dir($root)) {
+            $previousUmask = umask(0077);
+            try {
+                if (!@mkdir($root, 0700, true) && !is_dir($root)) {
+                    throw new RuntimeException('PHP-FPM tidak dapat membuat storage privat tunnel di /var/tmp.');
+                }
+            } finally {
+                umask($previousUmask);
+            }
+        }
+        @chmod($root, 0700);
+        if (!is_writable($root) || !is_readable($root)) {
+            throw new RuntimeException('Storage tunnel tidak dapat diakses user PHP-FPM.');
+        }
+        return $root;
+    }
+
+    private function _tunnel_process(array $command): array
+    {
+        if (!function_exists('proc_open')) throw new RuntimeException('proc_open tidak tersedia pada PHP-FPM.');
+        $pipes = [];
+        $process = @proc_open($command, [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ], $pipes, null, null, ['bypass_shell' => true]);
+        if (!is_resource($process)) throw new RuntimeException('PHP-FPM tidak dapat menjalankan utilitas SSH.');
+        fclose($pipes[0]);
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+        $open = [1 => $pipes[1], 2 => $pipes[2]];
+        $output = [1 => '', 2 => ''];
+        while ($open) {
+            $read = array_values($open);
+            $write = null;
+            $except = null;
+            $ready = @stream_select($read, $write, $except, 5);
+            if ($ready === false) break;
+            if ($ready === 0) {
+                $status = proc_get_status($process);
+                if (!$status['running']) {
+                    foreach ($open as $index => $pipe) {
+                        $output[$index] .= stream_get_contents($pipe);
+                        fclose($pipe);
+                        unset($open[$index]);
+                    }
+                }
+                continue;
+            }
+            foreach ($read as $pipe) {
+                $index = $pipe === $pipes[1] ? 1 : 2;
+                $output[$index] .= (string)fread($pipe, 8192);
+                if (feof($pipe)) {
+                    fclose($pipe);
+                    unset($open[$index]);
+                }
+            }
+        }
+        foreach ($open as $index => $pipe) {
+            $output[$index] .= stream_get_contents($pipe);
+            fclose($pipe);
+        }
+        $code = proc_close($process);
+        return ['code' => $code, 'stdout' => $output[1], 'stderr' => $output[2]];
+    }
+
+    private function _tunnel_fingerprint(string $knownHostLine): string
+    {
+        $parts = preg_split('/\s+/', trim($knownHostLine), 3);
+        if (count($parts) !== 3 || !preg_match('/\A[A-Za-z0-9@._+-]+\z/D', $parts[1])) return '';
+        $dir = $this->_tunnel_state_dir();
+        $temp = tempnam($dir, 'hostkey-');
+        if ($temp === false) return '';
+        try {
+            if (file_put_contents($temp, $knownHostLine . "\n", LOCK_EX) === false) return '';
+            @chmod($temp, 0600);
+            $result = $this->_tunnel_process(['/usr/bin/ssh-keygen', '-lf', $temp]);
+            if ($result['code'] !== 0) return '';
+            return preg_match('/\bSHA256:[A-Za-z0-9+\/=]+/', $result['stdout'], $match) ? $match[0] : '';
+        } finally {
+            @unlink($temp);
+        }
+    }
+
+    private function _known_host_name(): string
+    {
+        [$host, $port] = $this->_tunnel_endpoint();
+        return $port === 22 ? $host : '[' . $host . ']:' . $port;
     }
 
     private function _writeEnvFile(): bool

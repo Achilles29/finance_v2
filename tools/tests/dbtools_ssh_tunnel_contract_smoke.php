@@ -5,6 +5,8 @@ $controller = file_get_contents($root . '/application/controllers/System_tools.p
 $mainView = file_get_contents($root . '/application/views/system/dbtools.php');
 $settingsView = file_get_contents($root . '/application/views/system/settings.php');
 $script = file_get_contents($root . '/scripts/replication/tunnel_start.sh');
+$routes = file_get_contents($root . '/application/config/routes.php');
+$featureAccess = file_get_contents($root . '/application/config/feature_access.php');
 $checks = [];
 
 foreach (['action_initial_sync', 'action_compare_data', 'action_restart_replication'] as $method) {
@@ -30,6 +32,29 @@ $checks['settings save reports env write failure instead of false success'] =
     strpos($controller, 'if (!$this->_writeEnvFile())') !== false
     && strpos($controller, 'private function _writeEnvFile(): bool') !== false
     && strpos($controller, 'file_put_contents($envPath, implode("\\n", $lines) . "\\n", LOCK_EX)') !== false;
+
+foreach ([
+    'action_tunnel_generate_key', 'action_local_ssh_fingerprint',
+    'action_tunnel_scan_host_key', 'action_tunnel_trust_host_key',
+    'action_tunnel_status', 'action_tunnel_start', 'action_tunnel_stop',
+] as $method) {
+    $start = strpos($controller, 'function ' . $method . '(');
+    $next = strpos($controller, '\n    public function ', $start + 1);
+    $body = substr($controller, $start, $next === false ? null : $next - $start);
+    $checks[$method . ' checks mutation CSRF'] = strpos($body, 'require_system_tools_mutation_csrf()') !== false;
+}
+$checks['SSH tunnel UI routes and permission allowlist exist'] =
+    strpos($routes, "'dbtools/action/tunnel-start'") !== false
+    && strpos($routes, "'dbtools/action/local-ssh-fingerprint'") !== false
+    && strpos($featureAccess, 'action_tunnel_generate_key action_local_ssh_fingerprint') !== false
+    && strpos($featureAccess, 'action_tunnel_start action_tunnel_stop') !== false;
+$checks['primary SSH fingerprint button is wired'] =
+    strpos($mainView, 'id="btn-master-ssh-fingerprint"') !== false
+    && strpos($mainView, "getElementById('btn-master-ssh-fingerprint')?.addEventListener") !== false;
+$checks['tunnel SSH invocation pins host keys and limits listener to loopback'] =
+    strpos($controller, "'-o', 'StrictHostKeyChecking=yes'") !== false
+    && strpos($controller, "'-L', \"127.0.0.1:{\$localPort}:127.0.0.1:{\$remotePort}\"") !== false
+    && strpos($controller, 'proc_open($command') !== false;
 
 $failed = false;
 foreach ($checks as $name => $passed) {

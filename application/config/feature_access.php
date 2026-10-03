@@ -171,7 +171,7 @@ return [
             'RBAC_CORE' => 'pin unpin reorder manage save_structure menu_store menu_update menu_delete menu_toggle_active',
         ],
         'system_tools' => [
-            'RBAC_CORE' => 'index backup_guide replication_guide settings settings_save action_list_tables action_run_backup action_test_db action_apply_mysql_config action_setup_master action_check_replication action_initial_sync action_compare_data action_failover action_restart_replication backup_status replication_status',
+            'RBAC_CORE' => 'index backup_guide replication_guide settings settings_save action_list_tables action_run_backup action_test_db action_apply_mysql_config action_setup_master action_check_replication action_initial_sync action_compare_data action_failover action_restart_replication action_tunnel_generate_key action_local_ssh_fingerprint action_tunnel_scan_host_key action_tunnel_trust_host_key action_tunnel_status action_tunnel_start action_tunnel_stop backup_status replication_status',
         ],
         'telegram' => [
             'AUTOMATION_MESSAGING' => 'index guide target_save delivery schedule_save log resolve_unknown settings notification_settings setup_check_bot setup_discover_targets setup_save_discovered_target setup_install_webhook setup_check_webhook test_send run_due process_queue',

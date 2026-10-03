@@ -258,8 +258,9 @@ $lastDump   = !empty($recentDumps) ? $recentDumps[0] : null;
           <div class="dbt-section mt-3">Koneksi ke Server Utama</div>
           <div class="row g-3">
             <div class="col-md-8"><label class="form-label small mb-1">Alamat Server Utama</label>
-              <input type="text" id="r_master_host" class="form-control" placeholder="IP atau domain server utama"
-                     value="<?php echo $cfgGet($cfg,'repl.master_host',''); ?>"></div>
+              <input type="text" id="r_master_host" class="form-control" placeholder="core.namuacoffee.com (host database utama)"
+                     value="<?php echo $cfgGet($cfg,'repl.master_host',''); ?>">
+              <div class="form-text">Ini host database, bukan host SSH. Dengan tunnel aktif, koneksi diarahkan melalui 127.0.0.1:3307. Nama database mengikuti konfigurasi aplikasi (db_finance).</div></div>
             <div class="col-md-4"><label class="form-label small mb-1">Port MySQL</label>
               <input type="number" id="r_master_port" class="form-control" value="<?php echo $cfgGet($cfg,'repl.master_port','3306'); ?>"></div>
             <div class="col-md-6"><label class="form-label small mb-1">User Sinkronisasi</label>
@@ -273,9 +274,9 @@ $lastDump   = !empty($recentDumps) ? $recentDumps[0] : null;
 
     <div class="col-lg-6">
       <div class="card dbt-card p-4">
-        <div class="dbt-section">Jika Server Cadangan = Laptop (Tanpa IP Publik)</div>
+        <div class="dbt-section">Koneksi SSH Tunnel Server 2 ke Server 1</div>
         <div class="text-muted small mb-3">
-          Laptop terhubung ke server utama via <strong>terowongan SSH</strong>. Sinkronisasi tetap berjalan selama laptop ada koneksi internet.
+          Host database dan host SSH berbeda. Untuk setup ini, database utama memakai host <code>core.namuacoffee.com</code>; SSH Server 1 memakai <code>vs.namuacoffee.com:22</code>. Server 2 diakses melalui port SSH <code>2222</code>.
         </div>
         <div class="form-check form-switch mb-3">
           <input class="form-check-input" type="checkbox" id="t_enabled" role="switch"
@@ -284,8 +285,8 @@ $lastDump   = !empty($recentDumps) ? $recentDumps[0] : null;
         </div>
         <div id="tunnel-fields" class="<?php echo ($cfg['tunnel.enabled'] ?? '0') !== '1' ? 'd-none' : ''; ?>">
           <div class="row g-2">
-            <div class="col-md-8"><label class="form-label small mb-1">Alamat SSH Server Utama</label>
-              <input type="text" id="t_ssh_host" class="form-control form-control-sm" placeholder="SSH origin Server 1, bukan hostname Cloudflare-proxy"
+          <div class="col-md-8"><label class="form-label small mb-1">Alamat SSH Server Utama</label>
+              <input type="text" id="t_ssh_host" class="form-control form-control-sm" placeholder="vs.namuacoffee.com (SSH Server 1)"
                      value="<?php echo $cfgGet($cfg,'tunnel.ssh_host',''); ?>"></div>
             <div class="col-md-2"><label class="form-label small mb-1">Port SSH</label>
               <input type="number" id="t_ssh_port" class="form-control form-control-sm" value="<?php echo $cfgGet($cfg,'tunnel.ssh_port','22'); ?>">
@@ -298,7 +299,31 @@ $lastDump   = !empty($recentDumps) ? $recentDumps[0] : null;
               <input type="number" id="t_remote_port" class="form-control form-control-sm" value="<?php echo $cfgGet($cfg,'tunnel.remote_port','3306'); ?>"></div>
           </div>
           <div class="alert alert-secondary border-0 small mt-2 py-2">
-            Jalankan tunnel persisten di Server 2: <code>scripts/replication/tunnel_start.<?php echo $isWindows ? 'bat' : 'sh'; ?></code>. Perlu SSH key dan host key Server 1 yang sudah diverifikasi. Gunakan SSH origin yang dapat dijangkau, bukan hostname Cloudflare-proxy.
+            Start/stop tunnel dapat dilakukan dari UI di bawah. Setelah reboot atau koneksi SSH terputus, mulai ulang tunnel dari UI.
+          </div>
+          <div class="border-top pt-3 mt-3">
+            <div class="fw-semibold mb-1">Kelola SSH Tunnel dari UI</div>
+            <div class="form-text mb-2">Key privat dibuat di server ini dan tidak dikirim ke browser. Pasang baris authorized key terbatas pada akun SSH Server 1 melalui panel pengelolaan file. Baris ini hanya mengizinkan port-forward database, bukan shell.</div>
+            <div class="d-flex flex-wrap gap-2 mb-2">
+              <button type="button" class="btn btn-outline-primary btn-sm" id="btn-tunnel-key">Buat / Tampilkan Public Key</button>
+              <button type="button" class="btn btn-outline-dark btn-sm" id="btn-local-ssh-fingerprint">Fingerprint SSH host halaman ini</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-tunnel-scan">Periksa Fingerprint SSH</button>
+              <button type="button" class="btn btn-outline-success btn-sm" id="btn-tunnel-status">Cek Status Tunnel</button>
+            </div>
+            <label class="form-label small mb-1" for="tunnel-public-key">Public key client</label>
+            <textarea id="tunnel-public-key" class="form-control form-control-sm mb-2" rows="2" readonly></textarea>
+            <label class="form-label small mb-1" for="tunnel-authorized-key">Baris terbatas untuk authorized_keys Server 1</label>
+            <textarea id="tunnel-authorized-key" class="form-control form-control-sm mb-2" rows="3" readonly></textarea>
+            <div id="tunnel-fingerprint-list" class="small mb-2" aria-live="polite"></div>
+            <div class="input-group input-group-sm mb-2">
+              <input type="text" id="tunnel-confirm-fingerprint" class="form-control" placeholder="Tempel fingerprint SHA256 yang sudah diverifikasi dari Server 1">
+              <button type="button" class="btn btn-outline-warning" id="btn-tunnel-trust">Percayai Host Key</button>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-primary btn-sm" id="btn-tunnel-start">Mulai Tunnel</button>
+              <button type="button" class="btn btn-outline-danger btn-sm" id="btn-tunnel-stop">Hentikan Tunnel</button>
+            </div>
+            <div id="out-tunnel-management" class="dbt-output mt-2" aria-live="polite"></div>
           </div>
         </div>
       </div>
@@ -318,6 +343,9 @@ $lastDump   = !empty($recentDumps) ? $recentDumps[0] : null;
       <div class="d-flex gap-2 mb-3 flex-wrap">
         <button type="button" id="btn-apply-master-cfg" class="btn btn-outline-primary btn-sm">
           <i class="ri ri-settings-3-line me-1"></i>Terapkan Konfigurasi MySQL (Server 1)
+        </button>
+        <button type="button" id="btn-master-ssh-fingerprint" class="btn btn-outline-dark btn-sm">
+          Fingerprint SSH host Server 1
         </button>
       </div>
       <div id="out-apply-master" class="dbt-output"></div>
@@ -1376,6 +1404,78 @@ function toggleChap(header) {
     setLoading(this, true);
     try { const j = await post('dbtools/settings/save', replPayload()); alert('success', '✓ ' + esc(j.message)); }
     catch(e) { alert('danger', esc(e.message)); }
+    finally { setLoading(this, false); }
+  });
+
+  document.getElementById('btn-tunnel-key')?.addEventListener('click', async function() {
+    setLoading(this, true); output('out-tunnel-management', 'Menyiapkan key SSH...', true);
+    try {
+      const j = await post('dbtools/action/tunnel-generate-key', {});
+      document.getElementById('tunnel-public-key').value = j.public_key || '';
+      document.getElementById('tunnel-authorized-key').value = j.authorized_key || '';
+      output('out-tunnel-management', j.message, true);
+    } catch(e) { output('out-tunnel-management', e.message, true); }
+    finally { setLoading(this, false); }
+  });
+  document.getElementById('btn-tunnel-scan')?.addEventListener('click', async function() {
+    setLoading(this, true); output('out-tunnel-management', 'Memeriksa host key SSH...', true);
+    try {
+      const j = await post('dbtools/action/tunnel-scan-host-key', {});
+      const list = (j.fingerprints || []).map(x => `${x.key_type}: ${x.fingerprint}`).join('\n');
+      document.getElementById('tunnel-fingerprint-list').textContent = `${j.host}:${j.port}\n${list}\n${j.message}`;
+      output('out-tunnel-management', 'Bandingkan fingerprint di atas dengan host SSH Server 1 melalui kanal tepercaya, lalu tempel fingerprint yang sama untuk menyimpan trust.', true);
+    } catch(e) { output('out-tunnel-management', e.message, true); }
+    finally { setLoading(this, false); }
+  });
+  document.getElementById('btn-local-ssh-fingerprint')?.addEventListener('click', async function() {
+    setLoading(this, true);
+    try {
+      const j = await post('dbtools/action/local-ssh-fingerprint', {});
+      const list = (j.fingerprints || []).map(x => `${x.key_type}: ${x.fingerprint}`).join('\n');
+      document.getElementById('tunnel-fingerprint-list').textContent = `${j.message}\n${list}`;
+      output('out-tunnel-management', 'Gunakan fingerprint ini hanya jika halaman sedang dibuka pada Server 1 yang menerima SSH di port yang dikonfigurasi.', true);
+    } catch(e) { output('out-tunnel-management', e.message, true); }
+    finally { setLoading(this, false); }
+  });
+  document.getElementById('btn-master-ssh-fingerprint')?.addEventListener('click', async function() {
+    setLoading(this, true);
+    try {
+      const j = await post('dbtools/action/local-ssh-fingerprint', {});
+      const list = (j.fingerprints || []).map(x => `${x.key_type}: ${x.fingerprint}`).join('\n');
+      output('out-apply-master', `${j.message}\n${list}\nCatat fingerprint ini untuk dibandingkan dari Server 2.`, true);
+    } catch(e) { output('out-apply-master', e.message, true); }
+    finally { setLoading(this, false); }
+  });
+  document.getElementById('btn-tunnel-trust')?.addEventListener('click', async function() {
+    setLoading(this, true);
+    try {
+      const j = await post('dbtools/action/tunnel-trust-host-key', { fingerprint: getVal('tunnel-confirm-fingerprint') });
+      output('out-tunnel-management', j.message, true);
+    } catch(e) { output('out-tunnel-management', e.message, true); }
+    finally { setLoading(this, false); }
+  });
+  document.getElementById('btn-tunnel-status')?.addEventListener('click', async function() {
+    setLoading(this, true);
+    try {
+      const j = await post('dbtools/action/tunnel-status', {});
+      output('out-tunnel-management', j.running ? `Tunnel aktif di 127.0.0.1:${j.local_port}.` : `Tunnel belum aktif. Listener: ${j.local_listener ? 'ada' : 'tidak ada'}; SSH control: ${j.control_master ? 'aktif' : 'tidak aktif'}.`, true);
+    } catch(e) { output('out-tunnel-management', e.message, true); }
+    finally { setLoading(this, false); }
+  });
+  document.getElementById('btn-tunnel-start')?.addEventListener('click', async function() {
+    setLoading(this, true); output('out-tunnel-management', 'Membuka tunnel SSH...', true);
+    try {
+      const j = await post('dbtools/action/tunnel-start', {});
+      output('out-tunnel-management', `${j.message} Port lokal: ${j.local_port}.`, true);
+    } catch(e) { output('out-tunnel-management', e.message, true); }
+    finally { setLoading(this, false); }
+  });
+  document.getElementById('btn-tunnel-stop')?.addEventListener('click', async function() {
+    setLoading(this, true);
+    try {
+      const j = await post('dbtools/action/tunnel-stop', {});
+      output('out-tunnel-management', j.message, true);
+    } catch(e) { output('out-tunnel-management', e.message, true); }
     finally { setLoading(this, false); }
   });
 

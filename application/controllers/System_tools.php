@@ -1456,7 +1456,8 @@ class System_tools extends MY_Controller
             usleep(100000);
         } while (microtime(true) < $deadline);
 
-        if (!empty($status['running'])) {
+        $timedOut = !empty($status['running']);
+        if ($timedOut) {
             @proc_terminate($process);
             usleep(100000);
             $status = proc_get_status($process);
@@ -1469,7 +1470,7 @@ class System_tools extends MY_Controller
         return [
             'code' => $code,
             'stdout' => $stdout,
-            'stderr' => trim($stderr) !== '' ? $stderr : ($status['running'] ?? false ? 'SSH start timed out after 15 seconds.' : ''),
+            'stderr' => trim($stderr) !== '' ? $stderr : ($timedOut ? 'SSH start timed out after 15 seconds.' : ''),
         ];
     }
 

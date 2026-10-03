@@ -1140,6 +1140,14 @@ class System_tools extends MY_Controller
         }
 
         try {
+            if (!function_exists('proc_open')) {
+                $this->json_error('PHP-FPM Server 2 menonaktifkan proc_open, sehingga SSH Tunnel tidak bisa dijalankan dari UI. Aktifkan hanya untuk pool aplikasi Server 2 atau gunakan runner service khusus.', 501);
+                return;
+            }
+            if (!is_executable('/usr/bin/ssh')) {
+                $this->json_error('SSH client tidak tersedia atau tidak dapat dijalankan pada Server 2 (/usr/bin/ssh).', 500);
+                return;
+            }
             [$host, $sshPort] = $this->_tunnel_endpoint();
             $user = $this->_tunnel_user();
             $localPort = (int)$this->_cfg('tunnel.local_port', '3307');
@@ -1154,6 +1162,10 @@ class System_tools extends MY_Controller
             $knownHosts = $dir . '/known_hosts';
             if (!is_file($keyPath) || !is_file($knownHosts)) {
                 $this->json_error('Buat SSH key dan verifikasi host key melalui panel ini terlebih dahulu.', 422);
+                return;
+            }
+            if (!is_readable($keyPath) || !is_readable($knownHosts) || !is_writable($dir)) {
+                $this->json_error('PHP-FPM tidak memiliki izin yang diperlukan pada storage SSH tunnel. Pastikan file key/known_hosts terbaca dan direktori tunnel dapat ditulis oleh user aplikasi.', 500);
                 return;
             }
             $socket = $dir . '/control.sock';

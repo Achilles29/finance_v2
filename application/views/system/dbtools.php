@@ -1349,7 +1349,13 @@ function toggleChap(header) {
   async function post(url, data) {
     const r = await fetch(BASE + url, { method:'POST', headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest','X-System-Tools-CSRF':systemToolsMutationCsrfToken}, body:JSON.stringify(data) });
     const t = await r.text();
-    let j; try { j = JSON.parse(t); } catch(e) { throw new Error('Response error. Cek permission.'); }
+    let j; try { j = JSON.parse(t); } catch(e) {
+      const contentType = r.headers.get('content-type') || 'unknown content type';
+      const summary = t.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220);
+      throw new Error(`Server membalas HTTP ${r.status} (${contentType}), bukan JSON.${summary ? ' Ringkasan: ' + summary : ''}`);
+    }
     if (!j.ok) throw new Error(j.message || 'Gagal');
     return j;
   }

@@ -34,13 +34,13 @@ $kindLabel = static function (string $kind): string {
 <div class="fin-page-header mb-3">
   <div>
     <h4 class="fin-page-title"><i class="ri-shield-user-line me-1 text-primary"></i>Log Aktivitas</h4>
-    <p class="fin-page-subtitle mb-0">Jejak login, akses halaman, dan transaksi. Akses halaman mulai tercatat sejak fitur ini aktif.</p>
+    <p class="fin-page-subtitle mb-0">Jejak login, akses halaman, dan transaksi. Akses halaman baru disimpan lokal per server agar tidak menambah lalu lintas replikasi.</p>
   </div>
 </div>
 
 <div class="alert alert-info py-2 small" role="alert">
   <i class="ri-information-line me-1"></i>
-  Tidak menyimpan password, token, isi formulir, atau query URL. Transaksi lama dapat menampilkan perangkat bila cocok dengan sesi login pada waktu dan IP yang sama.
+  Tidak menyimpan password, token, isi formulir, atau query URL. Riwayat page-view lama tetap dibaca dari database; data page-view baru bersifat lokal di server ini. Transaksi lama dapat menampilkan perangkat bila cocok dengan sesi login pada waktu dan IP yang sama.
 </div>
 
 <form class="card activity-card mb-3" method="get" action="<?= $escape(site_url('system/activity-audit')) ?>">

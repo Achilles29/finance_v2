@@ -29,7 +29,8 @@ class Activity_audit_model extends CI_Model
     {
         [$union, $params] = $this->activity_union();
         if ($union === '') {
-            return ['total' => 0, 'page_views' => 0, 'logins' => 0, 'transactions' => 0];
+            $filePageViews = $this->file_page_event_count($filters);
+            return ['total' => $filePageViews, 'page_views' => $filePageViews, 'logins' => 0, 'transactions' => 0];
         }
 
         [$where, $whereParams] = $this->filter_clause($filters);
@@ -50,6 +51,9 @@ class Activity_audit_model extends CI_Model
                 $summary['transactions'] = $count;
             }
         }
+        $filePageViews = $this->file_page_event_count($filters);
+        $summary['total'] += $filePageViews;
+        $summary['page_views'] += $filePageViews;
 
         return $summary;
     }
@@ -58,7 +62,7 @@ class Activity_audit_model extends CI_Model
     {
         [$union, $params] = $this->activity_union();
         if ($union === '') {
-            return 0;
+            return $this->file_page_event_count($filters);
         }
         [$where, $whereParams] = $this->filter_clause($filters);
         $row = $this->db->query(
@@ -66,25 +70,32 @@ class Activity_audit_model extends CI_Model
             array_merge($params, $whereParams)
         )->row_array();
 
-        return (int)($row['total'] ?? 0);
+        return (int)($row['total'] ?? 0) + $this->file_page_event_count($filters);
     }
 
     public function list_events(array $filters, int $limit = 50, int $offset = 0): array
     {
         [$union, $params] = $this->activity_union();
         if ($union === '') {
-            return [];
+            return array_slice($this->file_page_events($filters), $offset, $limit);
         }
         [$where, $whereParams] = $this->filter_clause($filters);
         $limit = min(100, max(10, $limit));
         $offset = max(0, $offset);
+        $needed = $offset + $limit;
         $rows = $this->db->query(
             "SELECT * FROM ({$union}) activity {$where}
              ORDER BY event_at DESC, event_id DESC
-             LIMIT {$limit} OFFSET {$offset}",
+             LIMIT {$needed}",
             array_merge($params, $whereParams)
         )->result_array();
 
+        $rows = array_merge($rows, $this->file_page_events($filters, $needed));
+        usort($rows, static function(array $a, array $b): int {
+            $byTime = strcmp((string)($b['event_at'] ?? ''), (string)($a['event_at'] ?? ''));
+            return $byTime !== 0 ? $byTime : ((int)($b['event_id'] ?? 0) <=> (int)($a['event_id'] ?? 0));
+        });
+        $rows = array_slice($rows, $offset, $limit);
         foreach ($rows as &$row) {
             $row['device_label'] = $this->device_label((string)($row['user_agent'] ?? ''));
         }
@@ -96,7 +107,14 @@ class Activity_audit_model extends CI_Model
     private function activity_union(): array
     {
         $sources = [];
+        $params = [];
         if ($this->db->table_exists('aud_access_event')) {
+            $legacyCutover = $this->access_event_log()->cutover();
+            $legacyWindow = '';
+            if ($legacyCutover !== null) {
+                $legacyWindow = ' WHERE e.created_at < ?';
+                $params[] = $legacyCutover;
+            }
             $sources[] = "
                 SELECT
                     'PAGE_VIEW' AS event_kind,
@@ -118,7 +136,7 @@ class Activity_audit_model extends CI_Model
                     e.user_agent,
                     'ACCESS_EVENT' AS device_source
                 FROM aud_access_event e
-                LEFT JOIN auth_user u ON u.id = e.user_id";
+                LEFT JOIN auth_user u ON u.id = e.user_id{$legacyWindow}";
         }
 
         if ($this->db->table_exists('auth_session_log')) {
@@ -180,7 +198,70 @@ class Activity_audit_model extends CI_Model
                 LEFT JOIN auth_user u ON u.id = t.actor_user_id";
         }
 
-        return [implode("\nUNION ALL\n", $sources), []];
+        return [implode("\nUNION ALL\n", $sources), $params];
+    }
+
+    private function access_event_log(): Access_event_log
+    {
+        require_once APPPATH . 'libraries/Access_event_log.php';
+        return new Access_event_log();
+    }
+
+    private function file_page_event_count(array $filters): int
+    {
+        $count = 0;
+        foreach ($this->access_event_log()->eventsBetween(
+            (string)($filters['from_at'] ?? date('Y-m-d 00:00:00')),
+            (string)($filters['until_at'] ?? date('Y-m-d 00:00:00', strtotime('+1 day')))
+        ) as $event) {
+            if ($this->matches_file_event($event, $filters)) $count++;
+        }
+        return $count;
+    }
+
+    /** Return matching local page events, optionally retaining only the newest N. */
+    private function file_page_events(array $filters, int $limit = 0): array
+    {
+        $events = [];
+        foreach ($this->access_event_log()->eventsBetween(
+            (string)($filters['from_at'] ?? date('Y-m-d 00:00:00')),
+            (string)($filters['until_at'] ?? date('Y-m-d 00:00:00', strtotime('+1 day')))
+        ) as $event) {
+            if (!$this->matches_file_event($event, $filters)) continue;
+            $event += [
+                'entity_table' => null, 'entity_id' => null, 'transaction_no' => null,
+                'ref_label' => null, 'notes_preview' => null,
+            ];
+            $events[] = $event;
+            if ($limit > 0 && count($events) >= $limit * 2) {
+                $this->sort_events($events);
+                $events = array_slice($events, 0, $limit);
+            }
+        }
+        $this->sort_events($events);
+        return $limit > 0 ? array_slice($events, 0, $limit) : $events;
+    }
+
+    private function sort_events(array &$events): void
+    {
+        usort($events, static function(array $a, array $b): int {
+            $byTime = strcmp((string)($b['event_at'] ?? ''), (string)($a['event_at'] ?? ''));
+            return $byTime !== 0 ? $byTime : ((int)($b['event_id'] ?? 0) <=> (int)($a['event_id'] ?? 0));
+        });
+    }
+
+    private function matches_file_event(array $event, array $filters): bool
+    {
+        $userId = max(0, (int)($filters['user_id'] ?? 0));
+        if ($userId > 0 && (int)($event['user_id'] ?? 0) !== $userId) return false;
+        $kind = strtoupper(trim((string)($filters['kind'] ?? '')));
+        if ($kind !== '' && $kind !== 'PAGE_VIEW') return false;
+        $query = trim((string)($filters['q'] ?? ''));
+        if ($query === '') return true;
+        foreach (['username', 'page_code', 'route_path', 'action_label', 'module_code'] as $field) {
+            if (stripos((string)($event[$field] ?? ''), $query) !== false) return true;
+        }
+        return false;
     }
 
     private function filter_clause(array $filters): array

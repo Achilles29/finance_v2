@@ -74,6 +74,7 @@ function finance_quality_gate_manifest(): array
             ['id' => 'application-user-guide', 'file' => 'application_user_guide_smoke.php'],
             ['id' => 'application-user-guide-client', 'file' => 'application_user_guide_client_smoke.cjs', 'runtime' => '/usr/bin/node'],
             ['id' => 'activity-audit', 'file' => 'activity_audit_smoke.php'],
+            ['id' => 'access-event-log', 'file' => 'access_event_log_smoke.php'],
             ['id' => 'pos-multi-cashier', 'file' => 'pos_multi_cashier_smoke.php'],
             ['id' => 'pos-multi-cashier-ui', 'file' => 'pos_multi_cashier_ui_smoke.cjs', 'runtime' => '/usr/bin/node'],
             ['id' => 'auth-stale-session', 'file' => 'auth_stale_session_smoke.php'],

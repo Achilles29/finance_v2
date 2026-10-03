@@ -588,47 +588,31 @@ class MY_Controller extends CI_Controller
         }
         $this->access_event_recorded = true;
 
-        $previousDebug = $this->db->db_debug;
-        $this->db->db_debug = false;
-        $foreignKeyFailure = false;
-        try {
-            if (!$this->db->table_exists('aud_access_event')) {
-                return;
-            }
-            $path = trim((string)uri_string(), '/');
-            if ($path === '') {
-                $path = '/';
-            }
-            $normalizedPageCode = preg_match('/\A[a-z0-9][a-z0-9._-]{0,99}\z/i', $pageCode) === 1
-                ? $pageCode
-                : null;
-            $userAgent = mb_substr(trim((string)$this->input->user_agent()), 0, 255);
-            $recorded = $this->db->insert('aud_access_event', [
-                'user_id' => $userId,
-                'session_log_id' => max(0, (int)$this->session->userdata('session_log_id')) ?: null,
-                'page_code' => $normalizedPageCode,
-                'route_path' => mb_substr($path, 0, 255),
-                'request_method' => 'GET',
-                'ip_address' => mb_substr((string)$this->input->ip_address(), 0, 45),
-                'user_agent' => $userAgent !== '' ? $userAgent : null,
-                'device_label' => $this->access_device_label($userAgent),
-            ]);
-            if ($recorded === false) {
-                $error = $this->db->error();
-                $foreignKeyFailure = (int)($error['code'] ?? 0) === 1452;
-                log_message('error', 'Authenticated page access audit could not be recorded.');
-            }
-        } catch (Throwable $e) {
-            $foreignKeyFailure = (int)$e->getCode() === 1452;
-            log_message('error', 'Authenticated page access audit could not be recorded.');
-        } finally {
-            $this->db->db_debug = $previousDebug;
-        }
-
-        // Parent bisa hilang di antara cek awal dan INSERT (misalnya restore).
-        // Validasi ulang, bukan menghapus FK atau membuat session log palsu.
-        if ($foreignKeyFailure) {
-            $this->_assert_web_session_context($this->current_user);
+        require_once APPPATH . 'libraries/Access_event_log.php';
+        $path = trim((string)uri_string(), '/');
+        if ($path === '') $path = '/';
+        $userAgent = mb_substr(trim((string)$this->input->user_agent()), 0, 255);
+        $eventAt = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s.u');
+        $logger = new Access_event_log();
+        $recorded = $logger->append([
+            'event_kind' => 'PAGE_VIEW',
+            'event_id' => (int)floor(microtime(true) * 1000000),
+            'event_at' => $eventAt,
+            'user_id' => $userId,
+            'username' => mb_substr((string)($this->current_user['username'] ?? ('User #' . $userId)), 0, 100),
+            'page_code' => preg_match('/\A[a-z0-9][a-z0-9._-]{0,99}\z/i', $pageCode) === 1 ? $pageCode : null,
+            'route_path' => mb_substr($path, 0, 255),
+            'request_method' => 'GET',
+            'module_code' => 'SYSTEM',
+            'action_label' => 'Membuka halaman',
+            'ip_address' => mb_substr((string)$this->input->ip_address(), 0, 45),
+            'user_agent' => $userAgent !== '' ? $userAgent : null,
+            'device_source' => 'ACCESS_EVENT',
+        ]);
+        if (!$recorded) {
+            // Audit file failure must not break normal page requests or fall back
+            // to a write in the replicated database.
+            log_message('error', 'Finance page-access log write failed.');
         }
     }
 

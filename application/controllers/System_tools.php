@@ -1117,11 +1117,23 @@ class System_tools extends MY_Controller
             $fp = @fsockopen('127.0.0.1', $port, $errno, $error, 0.5);
             $localListener = is_resource($fp);
             if ($localListener) fclose($fp);
+            $startDiagnostic = null;
+            $diagnosticPath = $dir . '/start_diagnostic.json';
+            if (is_file($diagnosticPath) && is_readable($diagnosticPath)) {
+                $rawDiagnostic = json_decode((string)file_get_contents($diagnosticPath), true);
+                if (is_array($rawDiagnostic)) {
+                    $startDiagnostic = [
+                        'stage' => preg_replace('/[^a-z0-9_]/i', '', (string)($rawDiagnostic['stage'] ?? '')),
+                        'at' => (string)($rawDiagnostic['at'] ?? ''),
+                    ];
+                }
+            }
             $this->json_ok([
                 'running' => $control && $localListener,
                 'control_master' => $control,
                 'local_listener' => $localListener,
                 'local_port' => $port,
+                'last_start' => $startDiagnostic,
             ]);
         } catch (Throwable $e) {
             $this->json_error($e->getMessage(), 500);
@@ -1139,7 +1151,17 @@ class System_tools extends MY_Controller
             return;
         }
 
+        $dir = null;
+        $writeDiagnostic = static function(string $stage) use (&$dir): void {
+            if (!is_string($dir) || !is_dir($dir)) return;
+            $path = $dir . '/start_diagnostic.json';
+            $payload = json_encode(['stage' => $stage, 'at' => date('c')]);
+            if ($payload !== false && @file_put_contents($path, $payload, LOCK_EX) !== false) @chmod($path, 0600);
+        };
+
         try {
+            $dir = $this->_tunnel_state_dir();
+            $writeDiagnostic('request_received');
             if (!function_exists('proc_open')) {
                 $this->json_error('PHP-FPM Server 2 menonaktifkan proc_open, sehingga SSH Tunnel tidak bisa dijalankan dari UI. Aktifkan hanya untuk pool aplikasi Server 2 atau gunakan runner service khusus.', 501);
                 return;
@@ -1157,7 +1179,7 @@ class System_tools extends MY_Controller
                 return;
             }
 
-            $dir = $this->_tunnel_state_dir();
+            $writeDiagnostic('preflight_passed');
             $keyPath = $dir . '/client_ed25519';
             $knownHosts = $dir . '/known_hosts';
             if (!is_file($keyPath) || !is_file($knownHosts)) {
@@ -1190,6 +1212,7 @@ class System_tools extends MY_Controller
                 return;
             }
 
+            $writeDiagnostic('before_ssh_start');
             $result = $this->_tunnel_start_process([
                 '/usr/bin/ssh', '-M', '-S', $socket,
                 '-o', 'ControlMaster=yes',
@@ -1207,6 +1230,7 @@ class System_tools extends MY_Controller
                 '-L', "127.0.0.1:{$localPort}:127.0.0.1:{$remotePort}",
                 '-fN', $user . '@' . $host,
             ], $dir);
+            $writeDiagnostic($result['code'] === 0 ? 'ssh_start_returned' : 'ssh_start_failed');
             if ($result['code'] !== 0) {
                 $detail = trim($result['stderr'] ?: $result['stdout']);
                 $this->json_error('SSH tunnel gagal dimulai.' . ($detail !== '' ? ' ' . $detail : ''), 502);
@@ -1220,8 +1244,10 @@ class System_tools extends MY_Controller
                 return;
             }
             fclose($probe);
+            $writeDiagnostic('listener_verified');
             $this->json_ok(['message' => 'SSH tunnel aktif.', 'local_port' => $localPort]);
         } catch (Throwable $e) {
+            $writeDiagnostic('controller_exception');
             log_message('error', 'System Tools SSH tunnel start failed.');
             $this->json_error($e->getMessage(), 500);
         }

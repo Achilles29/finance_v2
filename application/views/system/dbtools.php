@@ -1464,7 +1464,9 @@ function toggleChap(header) {
     setLoading(this, true);
     try {
       const j = await post('dbtools/action/tunnel-status', {});
-      output('out-tunnel-management', j.running ? `Tunnel aktif di 127.0.0.1:${j.local_port}.` : `Tunnel belum aktif. Listener: ${j.local_listener ? 'ada' : 'tidak ada'}; SSH control: ${j.control_master ? 'aktif' : 'tidak aktif'}.`, true);
+      const state = j.running ? `Tunnel aktif di 127.0.0.1:${j.local_port}.` : `Tunnel belum aktif. Listener: ${j.local_listener ? 'ada' : 'tidak ada'}; SSH control: ${j.control_master ? 'aktif' : 'tidak aktif'}.`;
+      const lastStart = j.last_start?.stage ? `\nCheckpoint start terakhir: ${j.last_start.stage} (${j.last_start.at || 'waktu tidak tersedia'}).` : '\nBelum ada checkpoint start dari UI pada server ini.';
+      output('out-tunnel-management', state + lastStart, true);
     } catch(e) { output('out-tunnel-management', e.message, true); }
     finally { setLoading(this, false); }
   });

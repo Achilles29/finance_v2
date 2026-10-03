@@ -65,6 +65,11 @@ $checks['background tunnel start avoids inherited pipe wait and has connect time
     && strpos($controller, "'-o', 'ConnectionAttempts=1'") !== false
     && strpos($controller, '1 => [\'file\', $stdoutPath, \'a\']') !== false
     && strpos($controller, 'SSH start timed out after 15 seconds.') !== false;
+$checks['tunnel UI status exposes only safe start checkpoint'] =
+    strpos($controller, '/start_diagnostic.json') !== false
+    && strpos($controller, '\'last_start\' => $startDiagnostic') !== false
+    && strpos($mainView, 'Checkpoint start terakhir:') !== false
+    && strpos($controller, "'before_ssh_start'") !== false;
 
 $failed = false;
 foreach ($checks as $name => $passed) {

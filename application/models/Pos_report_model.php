@@ -478,7 +478,9 @@ class Pos_report_model extends CI_Model
         $row['account_rows'] = $accountRows;
         $row['focus_account'] = $focusRow;
         $row['has_cash_variance'] = abs((float)($row['variance_cash'] ?? 0)) > 0.009;
-        $row['has_focus_variance'] = abs((float)($focusRow['variance_net'] ?? 0)) > 0.009;
+        $row['has_focus_variance'] = $focusAccountId > 0
+            ? abs((float)($focusRow['variance_net'] ?? 0)) > 0.009
+            : $this->cashier_close_accounts_have_variance($accountRows);
 
         return $row;
     }
@@ -2372,7 +2374,9 @@ class Pos_report_model extends CI_Model
             $row['account_rows'] = $accountRows;
             $row['focus_account'] = $focusRow;
             $row['has_cash_variance'] = abs((float)($row['variance_cash'] ?? 0)) > 0.009;
-            $row['has_focus_variance'] = abs((float)($focusRow['variance_net'] ?? 0)) > 0.009;
+            $row['has_focus_variance'] = $focusAccountId > 0
+                ? abs((float)($focusRow['variance_net'] ?? 0)) > 0.009
+                : $this->cashier_close_accounts_have_variance($accountRows);
             $row['has_any_variance'] = !empty($row['has_cash_variance']) || !empty($row['has_focus_variance']);
         }
         unset($row);
@@ -2749,6 +2753,17 @@ class Pos_report_model extends CI_Model
             'is_focus' => true,
             'has_variance' => false,
         ];
+    }
+
+    private function cashier_close_accounts_have_variance(array $accountRows): bool
+    {
+        foreach ($accountRows as $row) {
+            if (!empty($row['has_variance'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function daily_sales_overview(string $date, int $outletId = 0): array

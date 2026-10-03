@@ -5302,9 +5302,6 @@ public function self_order_tables_print()
         $filters = $this->cashier_close_report_filters();
         $accounts = $this->Finance_report_model->active_company_accounts();
         $selectedAccountId = (int)($filters['account_id'] ?? 0);
-        if ($selectedAccountId <= 0) {
-            $selectedAccountId = $this->Finance_report_model->default_cash_account_id($accounts);
-        }
 
         $selectedAccount = null;
         foreach ($accounts as $account) {
@@ -5315,7 +5312,9 @@ public function self_order_tables_print()
         }
 
         $filters['account_id'] = $selectedAccountId;
-        $filters['account_label'] = $this->cashier_close_account_label($selectedAccount);
+        $filters['account_label'] = $selectedAccountId > 0
+            ? $this->cashier_close_account_label($selectedAccount)
+            : 'Semua rekening';
         $dataset = $this->Pos_report_model->cashier_close_report($filters);
 
         $this->render('pos/report_cashier_close_index', [
@@ -5341,9 +5340,6 @@ public function self_order_tables_print()
         $this->load->model('Finance_report_model');
         $accounts = $this->Finance_report_model->active_company_accounts();
         $focusAccountId = max(0, (int)$this->input->get('account_id', true));
-        if ($focusAccountId <= 0) {
-            $focusAccountId = $this->Finance_report_model->default_cash_account_id($accounts);
-        }
 
         $audit = $this->Pos_report_model->cashier_close_detail($shiftId, $focusAccountId);
         $report = $this->Pos_model->shift_close_report($shiftId);
@@ -5591,12 +5587,17 @@ public function self_order_tables_print()
 
     private function cashier_close_report_filters(): array
     {
+        $today = date('Y-m-d');
+        $monthStart = date('Y-m-01');
+        $dateFrom = $this->optional_report_date_input('date_from');
+        $dateTo = $this->optional_report_date_input('date_to');
+
         return [
             'q' => trim((string)$this->input->get('q', true)),
             'outlet_id' => max(0, (int)$this->input->get('outlet_id', true)),
             'account_id' => max(0, (int)$this->input->get('account_id', true)),
-            'date_from' => $this->report_date_input('date_from'),
-            'date_to' => $this->report_date_input('date_to'),
+            'date_from' => $dateFrom !== '' ? $dateFrom : $monthStart,
+            'date_to' => $dateTo !== '' ? $dateTo : $today,
             'page' => max(1, (int)$this->input->get('page', true)),
             'limit' => max(1, min(200, (int)$this->input->get('limit', true) ?: 25)),
         ];
@@ -5630,7 +5631,7 @@ public function self_order_tables_print()
             $label .= ($label !== '' ? ' | ' : '') . $bank;
         }
 
-        return $label !== '' ? $label : 'Brankas / rekening fokus';
+        return $label !== '' ? $label : 'Semua rekening';
     }
 
     private function payment_method_filters(): array

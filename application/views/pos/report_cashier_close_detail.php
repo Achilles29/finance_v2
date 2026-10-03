@@ -14,7 +14,7 @@ $badgeClass = static function ($value): string {
     }
     return $amount > 0 ? 'warning' : 'danger';
 };
-$focusLabel = 'Brankas / rekening fokus';
+$focusLabel = $focusAccountId > 0 ? 'Rekening fokus' : 'Semua rekening';
 if (!empty($selectedAccount)) {
     $parts = [];
     if (!empty($selectedAccount['account_code'])) { $parts[] = trim((string)$selectedAccount['account_code']); }
@@ -44,7 +44,7 @@ $this->load->view('pos/_report_styles');
     <?php $this->load->view('pos/_report_nav', ['report_nav_active' => 'cashier_close']); ?>
 
     <div class="pos-report-chip-row mb-3">
-      <div class="pos-report-chip"><strong>Rekening fokus:</strong> <?php echo html_escape($focusLabel); ?></div>
+      <div class="pos-report-chip"><strong>Rekening:</strong> <?php echo html_escape($focusLabel); ?></div>
       <div class="pos-report-chip"><strong>Kasir buka:</strong> <?php echo html_escape((string)($row['cashier_open_name'] ?? '-')); ?></div>
       <div class="pos-report-chip"><strong>Kasir tutup:</strong> <?php echo html_escape((string)($row['cashier_close_name'] ?? '-')); ?></div>
     </div>

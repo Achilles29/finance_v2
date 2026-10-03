@@ -86,7 +86,7 @@ $this->load->view('pos/_report_styles');
                 <div class="col-lg-3 col-md-6">
                     <label class="form-label small text-muted mb-1">Rekening Fokus</label>
                     <select name="account_id" class="form-select">
-                        <option value="0">Default akun kas / brankas</option>
+                        <option value="0"<?php echo (int)($filters['account_id'] ?? 0) === 0 ? ' selected' : ''; ?>>Semua rekening</option>
                         <?php foreach ($accounts as $account): ?>
                             <?php
                             $parts = [];

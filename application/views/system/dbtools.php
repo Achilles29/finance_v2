@@ -285,7 +285,7 @@ $lastDump   = !empty($recentDumps) ? $recentDumps[0] : null;
         <div id="tunnel-fields" class="<?php echo ($cfg['tunnel.enabled'] ?? '0') !== '1' ? 'd-none' : ''; ?>">
           <div class="row g-2">
             <div class="col-md-8"><label class="form-label small mb-1">Alamat SSH Server Utama</label>
-              <input type="text" id="t_ssh_host" class="form-control form-control-sm" placeholder="IP/domain (sama dengan server utama)"
+              <input type="text" id="t_ssh_host" class="form-control form-control-sm" placeholder="SSH origin Server 1, bukan hostname Cloudflare-proxy"
                      value="<?php echo $cfgGet($cfg,'tunnel.ssh_host',''); ?>"></div>
             <div class="col-md-2"><label class="form-label small mb-1">Port SSH</label>
               <input type="number" id="t_ssh_port" class="form-control form-control-sm" value="<?php echo $cfgGet($cfg,'tunnel.ssh_port','22'); ?>">
@@ -298,7 +298,7 @@ $lastDump   = !empty($recentDumps) ? $recentDumps[0] : null;
               <input type="number" id="t_remote_port" class="form-control form-control-sm" value="<?php echo $cfgGet($cfg,'tunnel.remote_port','3306'); ?>"></div>
           </div>
           <div class="alert alert-secondary border-0 small mt-2 py-2">
-            Nyalakan terowongan: <code>scripts/replication/tunnel_start.<?php echo $isWindows ? 'bat' : 'sh'; ?></code>
+            Jalankan tunnel persisten di Server 2: <code>scripts/replication/tunnel_start.<?php echo $isWindows ? 'bat' : 'sh'; ?></code>. Perlu SSH key dan host key Server 1 yang sudah diverifikasi. Gunakan SSH origin yang dapat dijangkau, bukan hostname Cloudflare-proxy.
           </div>
         </div>
       </div>
@@ -735,8 +735,8 @@ sudo brew install mysql          # Mac</div>
       <li>
         <div class="snum">4</div>
         <div class="sbody">
-          <div class="stitle">Buat terowongan SSH dari laptop ke server</div>
-          <div class="sdesc">Terowongan ini membuat MySQL di laptop "seolah" terhubung langsung ke MySQL server:</div>
+          <div class="stitle">Buat terowongan SSH dari Server 2 ke Server 1</div>
+          <div class="sdesc">Tunnel harus berjalan di Server 2, yaitu host yang menjalankan MariaDB slave dan DB Tools:</div>
           <?php if ($isWin): ?>
           <div class="dbt-code">ssh -N -L 3307:127.0.0.1:3306 user@IP_SERVER_UTAMA</div>
           <div class="sdesc">Di Windows bisa juga pakai PuTTY: Connection → SSH → Tunnels → Source: 3307, Destination: 127.0.0.1:3306</div>
@@ -759,11 +759,11 @@ autossh -M 0 -fN -L 3307:127.0.0.1:3306 user@IP_SERVER_UTAMA</div>
       <li>
         <div class="snum">6</div>
         <div class="sbody">
-          <div class="stitle">Nyalakan terowongan otomatis saat laptop menyala</div>
+          <div class="stitle">Nyalakan terowongan otomatis saat Server 2 menyala</div>
           <?php if ($isWin): ?>
           <div class="sdesc">Buka Task Scheduler → buat task → Trigger: At logon → Action: <code>scripts\replication\tunnel_start.bat</code></div>
           <?php else: ?>
-          <div class="sdesc">Tambahkan ke crontab: <code>@reboot autossh -M 0 -fN -L 3307:127.0.0.1:3306 user@IP_SERVER</code></div>
+          <div class="sdesc">Setelah SSH key dan host key diverifikasi, tambahkan ke crontab root: <code>@reboot <?php echo rtrim(FCPATH, '/'); ?>/scripts/replication/tunnel_start.sh</code></div>
           <?php endif; ?>
           <div class="guide-note mt-1">Saat laptop offline, sinkronisasi berhenti sementara. Saat online kembali, otomatis lanjut dari titik terakhir — tidak ada data yang hilang.</div>
         </div>

@@ -491,12 +491,15 @@ class System_tools extends MY_Controller
         $tunnelOn   = $this->_cfg('tunnel.enabled', '0') === '1';
         $masterHost = $tunnelOn ? '127.0.0.1' : $this->_cfg('repl.master_host', '');
         $masterPort = $tunnelOn
-            ? (int)$this->_cfg('tunnel.local_port', '3308')
+            ? (int)$this->_cfg('tunnel.local_port', '3307')
             : (int)$this->_cfg('repl.master_port', '3306');
         $syncUser   = $this->_cfg('backup.db_user', 'root');
         $syncPass   = $this->_cfg('backup.db_pass', '');
         $dbName     = $this->db->database;
 
+        if ($tunnelOn && $this->_cfg('tunnel.ssh_host', '') === '') {
+            $this->json_error('SSH host tunnel belum dikonfigurasi.', 422); return;
+        }
         if (empty($masterHost)) {
             $this->json_error('Alamat server utama belum dikonfigurasi.', 422); return;
         }
@@ -749,7 +752,7 @@ class System_tools extends MY_Controller
         $tunnelOn   = $this->_cfg('tunnel.enabled', '0') === '1';
         $masterHost = $tunnelOn ? '127.0.0.1' : $this->_cfg('repl.master_host', '');
         $masterPort = $tunnelOn
-            ? (int)$this->_cfg('tunnel.local_port', '3308')
+            ? (int)$this->_cfg('tunnel.local_port', '3307')
             : (int)$this->_cfg('repl.master_port', '3306');
         $syncUser   = $this->_cfg('backup.db_user', 'root');
         $syncPass   = $this->_cfg('backup.db_pass', '');
@@ -758,6 +761,9 @@ class System_tools extends MY_Controller
         $cfgExclude = array_filter(array_map('trim', explode(',', $this->_cfg('backup.exclude_tables', ''))));
         $excludeSet = array_unique(array_merge($cfgExclude, ['sys_app_config']));
 
+        if ($tunnelOn && $this->_cfg('tunnel.ssh_host', '') === '') {
+            $this->json_error('SSH host tunnel belum dikonfigurasi.', 422); return;
+        }
         if (empty($masterHost)) {
             $this->json_error('Alamat server utama belum dikonfigurasi.', 422); return;
         }
@@ -851,7 +857,11 @@ class System_tools extends MY_Controller
         $connHost    = $tunnelOn ? '127.0.0.1' : $masterHost;
         $connPort    = $tunnelOn ? (int)$this->_cfg('tunnel.local_port', '3307') : $masterPort;
 
-        if (empty($masterHost)) {
+        if ($tunnelOn && $this->_cfg('tunnel.ssh_host', '') === '') {
+            $this->json_error('SSH host tunnel belum dikonfigurasi.', 422);
+            return;
+        }
+        if (!$tunnelOn && empty($masterHost)) {
             $this->json_error('Master host belum dikonfigurasi.', 422);
             return;
         }
@@ -890,7 +900,10 @@ class System_tools extends MY_Controller
 
             $this->json_ok(['message' => "Replication berhasil di-restart. Server kembali jadi Slave.", 'log_file' => $logFile, 'log_pos' => $logPos]);
         } catch (Exception $e) {
-            $this->json_error('Gagal restart replication: ' . $e->getMessage(), 500);
+            $hint = $tunnelOn
+                ? " Pastikan SSH tunnel aktif pada 127.0.0.1:{$connPort}, SSH key/host key valid, dan port remote MariaDB benar."
+                : '';
+            $this->json_error('Gagal restart replication: ' . $e->getMessage() . $hint, 500);
         }
     }
 

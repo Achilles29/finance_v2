@@ -213,8 +213,12 @@ function cfgVal(array $cfg, string $key, string $default = ''): string {
               <div class="col-md-8">
                 <label class="form-label small mb-1">SSH Host</label>
                 <input type="text" id="cfg_tunnel_ssh_host" class="form-control"
-                       placeholder="IP/domain Server 1 (sama dengan master_host)"
+                       placeholder="Alamat SSH origin Server 1 (bukan hostname Cloudflare-proxy)"
                        value="<?php echo cfgVal($cfg, 'tunnel.ssh_host', ''); ?>">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small mb-1">SSH Port</label>
+                <input type="number" id="cfg_tunnel_ssh_port" class="form-control" min="1" max="65535" value="<?php echo cfgVal($cfg, 'tunnel.ssh_port', '22'); ?>">
               </div>
               <div class="col-md-4">
                 <label class="form-label small mb-1">SSH User</label>
@@ -231,7 +235,7 @@ function cfgVal(array $cfg, string $key, string $default = ''): string {
               </div>
             </div>
             <div class="alert alert-info border-0 small mt-3 py-2">
-              Start tunnel: <code>scripts/replication/tunnel_start.<?php echo $isWindows ? 'bat' : 'sh'; ?></code>
+              Jalankan tunnel persisten di Server 2: <code>scripts/replication/tunnel_start.<?php echo $isWindows ? 'bat' : 'sh'; ?></code>. Gunakan SSH key dan host key Server 1 yang sudah diverifikasi; tunnel harus aktif sebelum menghubungkan replikasi.
             </div>
           </div>
         </div>
@@ -438,6 +442,7 @@ function cfgVal(array $cfg, string $key, string $default = ''): string {
       'repl.repl_pass':    document.getElementById('cfg_repl_repl_pass')?.value || '',
       'tunnel.enabled':    document.getElementById('cfg_tunnel_enabled').checked ? '1' : '0',
       'tunnel.ssh_host':   document.getElementById('cfg_tunnel_ssh_host')?.value.trim() || '',
+      'tunnel.ssh_port':   document.getElementById('cfg_tunnel_ssh_port')?.value.trim() || '22',
       'tunnel.ssh_user':   document.getElementById('cfg_tunnel_ssh_user')?.value.trim() || 'root',
       'tunnel.local_port': document.getElementById('cfg_tunnel_local_port')?.value.trim() || '3307',
       'tunnel.remote_port':document.getElementById('cfg_tunnel_remote_port')?.value.trim() || '3306',

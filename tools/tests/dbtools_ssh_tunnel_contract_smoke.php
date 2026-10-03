@@ -59,6 +59,12 @@ $checks['tunnel SSH invocation pins host keys and limits listener to loopback'] 
     strpos($controller, "'-o', 'StrictHostKeyChecking=yes'") !== false
     && strpos($controller, "'-L', \"127.0.0.1:{\$localPort}:127.0.0.1:{\$remotePort}\"") !== false
     && strpos($controller, 'proc_open($command') !== false;
+$checks['background tunnel start avoids inherited pipe wait and has connect timeout'] =
+    strpos($controller, "_tunnel_start_process([") !== false
+    && strpos($controller, "'-o', 'ConnectTimeout=10'") !== false
+    && strpos($controller, "'-o', 'ConnectionAttempts=1'") !== false
+    && strpos($controller, '1 => [\'file\', $stdoutPath, \'a\']') !== false
+    && strpos($controller, 'SSH start timed out after 15 seconds.') !== false;
 
 $failed = false;
 foreach ($checks as $name => $passed) {

@@ -1190,7 +1190,7 @@ class System_tools extends MY_Controller
                 return;
             }
 
-            $result = $this->_tunnel_process([
+            $result = $this->_tunnel_start_process([
                 '/usr/bin/ssh', '-M', '-S', $socket,
                 '-o', 'ControlMaster=yes',
                 '-o', 'ExitOnForwardFailure=yes',
@@ -1198,13 +1198,15 @@ class System_tools extends MY_Controller
                 '-o', 'StrictHostKeyChecking=yes',
                 '-o', 'UserKnownHostsFile=' . $knownHosts,
                 '-o', 'IdentitiesOnly=yes',
+                '-o', 'ConnectTimeout=10',
+                '-o', 'ConnectionAttempts=1',
                 '-o', 'ServerAliveInterval=30',
                 '-o', 'ServerAliveCountMax=3',
                 '-i', $keyPath,
                 '-p', (string)$sshPort,
                 '-L', "127.0.0.1:{$localPort}:127.0.0.1:{$remotePort}",
                 '-fN', $user . '@' . $host,
-            ]);
+            ], $dir);
             if ($result['code'] !== 0) {
                 $detail = trim($result['stderr'] ?: $result['stdout']);
                 $this->json_error('SSH tunnel gagal dimulai.' . ($detail !== '' ? ' ' . $detail : ''), 502);
@@ -1420,6 +1422,55 @@ class System_tools extends MY_Controller
         }
         $code = proc_close($process);
         return ['code' => $code, 'stdout' => $output[1], 'stderr' => $output[2]];
+    }
+
+    private function _tunnel_start_process(array $command, string $stateDir): array
+    {
+        if (!function_exists('proc_open')) throw new RuntimeException('proc_open tidak tersedia pada PHP-FPM.');
+        $stdoutPath = $stateDir . '/ssh-start.stdout';
+        $stderrPath = $stateDir . '/ssh-start.stderr';
+        foreach ([$stdoutPath, $stderrPath] as $path) {
+            if (file_put_contents($path, '', LOCK_EX) === false) {
+                throw new RuntimeException('PHP-FPM tidak dapat menyiapkan log privat untuk proses SSH.');
+            }
+            @chmod($path, 0600);
+        }
+
+        $pipes = [];
+        $process = @proc_open($command, [
+            0 => ['pipe', 'r'],
+            1 => ['file', $stdoutPath, 'a'],
+            2 => ['file', $stderrPath, 'a'],
+        ], $pipes, null, null, ['bypass_shell' => true]);
+        if (!is_resource($process)) throw new RuntimeException('PHP-FPM tidak dapat menjalankan SSH client.');
+        fclose($pipes[0]);
+
+        $deadline = microtime(true) + 15;
+        $observedExitCode = null;
+        do {
+            $status = proc_get_status($process);
+            if (!$status['running']) {
+                $observedExitCode = (int)$status['exitcode'];
+                break;
+            }
+            usleep(100000);
+        } while (microtime(true) < $deadline);
+
+        if (!empty($status['running'])) {
+            @proc_terminate($process);
+            usleep(100000);
+            $status = proc_get_status($process);
+            if (!empty($status['running'])) @proc_terminate($process, 9);
+        }
+        $code = proc_close($process);
+        if ($code === -1 && $observedExitCode !== null) $code = $observedExitCode;
+        $stdout = is_file($stdoutPath) ? (string)file_get_contents($stdoutPath) : '';
+        $stderr = is_file($stderrPath) ? (string)file_get_contents($stderrPath) : '';
+        return [
+            'code' => $code,
+            'stdout' => $stdout,
+            'stderr' => trim($stderr) !== '' ? $stderr : ($status['running'] ?? false ? 'SSH start timed out after 15 seconds.' : ''),
+        ];
     }
 
     private function _tunnel_fingerprint(string $knownHostLine): string

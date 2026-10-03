@@ -1126,6 +1126,20 @@ class System_tools extends MY_Controller
                         'stage' => preg_replace('/[^a-z0-9_]/i', '', (string)($rawDiagnostic['stage'] ?? '')),
                         'at' => (string)($rawDiagnostic['at'] ?? ''),
                     ];
+                    // Translate only known failure codes; never expose raw SSH output.
+                    $failureCode = (string)($rawDiagnostic['error_code'] ?? '');
+                    if ($failureCode === '' && $startDiagnostic['stage'] === 'ssh_start_failed'
+                        && is_readable($dir . '/ssh-start.stderr')) {
+                        // Compatibility with checkpoints written before structured errors.
+                        $failureCode = $this->_tunnel_failure_code([
+                            'stderr' => (string)file_get_contents($dir . '/ssh-start.stderr', false, null, 0, 8192),
+                        ]);
+                    }
+                    $failureMessage = $this->_tunnel_failure_message($failureCode);
+                    if ($failureMessage !== '') {
+                        $startDiagnostic['error_code'] = $failureCode;
+                        $startDiagnostic['message'] = $failureMessage;
+                    }
                 }
             }
             $this->json_ok([
@@ -1152,10 +1166,10 @@ class System_tools extends MY_Controller
         }
 
         $dir = null;
-        $writeDiagnostic = static function(string $stage) use (&$dir): void {
+        $writeDiagnostic = static function(string $stage, string $failureCode = '') use (&$dir): void {
             if (!is_string($dir) || !is_dir($dir)) return;
             $path = $dir . '/start_diagnostic.json';
-            $payload = json_encode(['stage' => $stage, 'at' => date('c')]);
+            $payload = json_encode(['stage' => $stage, 'at' => date('c'), 'error_code' => $failureCode]);
             if ($payload !== false && @file_put_contents($path, $payload, LOCK_EX) !== false) @chmod($path, 0600);
         };
 
@@ -1230,17 +1244,19 @@ class System_tools extends MY_Controller
                 '-L', "127.0.0.1:{$localPort}:127.0.0.1:{$remotePort}",
                 '-fN', $user . '@' . $host,
             ], $dir);
-            $writeDiagnostic($result['code'] === 0 ? 'ssh_start_returned' : 'ssh_start_failed');
             if ($result['code'] !== 0) {
-                $detail = trim($result['stderr'] ?: $result['stdout']);
-                $this->json_error('SSH tunnel gagal dimulai.' . ($detail !== '' ? ' ' . $detail : ''), 502);
+                $failureCode = $this->_tunnel_failure_code($result);
+                $writeDiagnostic('ssh_start_failed', $failureCode);
+                $this->_tunnel_error($failureCode);
                 return;
             }
+            $writeDiagnostic('ssh_start_returned');
 
             usleep(250000);
             $probe = @fsockopen('127.0.0.1', $localPort, $errno, $error, 1.0);
             if (!is_resource($probe)) {
-                $this->json_error('Proses SSH tidak membuka listener lokal. Periksa key dan hak port-forward akun SSH.', 502);
+                $writeDiagnostic('listener_missing', 'SSH_LISTENER_MISSING');
+                $this->_tunnel_error('SSH_LISTENER_MISSING');
                 return;
             }
             fclose($probe);
@@ -1273,7 +1289,7 @@ class System_tools extends MY_Controller
             ]);
             @unlink($socket);
             if ($result['code'] !== 0) {
-                $this->json_error('Gagal menghentikan tunnel. Listener mungkin sudah berhenti; periksa status tunnel.', 502);
+                $this->json_error('Gagal menghentikan tunnel. Listener mungkin sudah berhenti; periksa status tunnel.', 422);
                 return;
             }
             $this->json_ok(['message' => 'SSH tunnel dihentikan.']);
@@ -1491,13 +1507,59 @@ class System_tools extends MY_Controller
         }
         $code = proc_close($process);
         if ($code === -1 && $observedExitCode !== null) $code = $observedExitCode;
-        $stdout = is_file($stdoutPath) ? (string)file_get_contents($stdoutPath) : '';
-        $stderr = is_file($stderrPath) ? (string)file_get_contents($stderrPath) : '';
+        $stdout = is_file($stdoutPath) ? (string)file_get_contents($stdoutPath, false, null, 0, 8192) : '';
+        $stderr = is_file($stderrPath) ? (string)file_get_contents($stderrPath, false, null, 0, 8192) : '';
         return [
-            'code' => $code,
+            'code' => $timedOut ? 124 : $code,
+            'timed_out' => $timedOut,
             'stdout' => $stdout,
             'stderr' => trim($stderr) !== '' ? $stderr : ($timedOut ? 'SSH start timed out after 15 seconds.' : ''),
         ];
+    }
+
+    private function _tunnel_failure_code(array $result): string
+    {
+        $detail = strtolower((string)($result['stderr'] ?? ''));
+        if (!empty($result['timed_out']) || strpos($detail, 'timed out') !== false) return 'SSH_TIMEOUT';
+        if (strpos($detail, 'host key verification failed') !== false
+            || strpos($detail, 'remote host identification has changed') !== false) return 'SSH_HOST_KEY_REJECTED';
+        if (strpos($detail, 'bad permissions') !== false || strpos($detail, 'unprotected private key') !== false
+            || strpos($detail, 'load key ') !== false || strpos($detail, 'identity file ') !== false) return 'SSH_KEY_UNREADABLE';
+        if (strpos($detail, 'permission denied (') !== false || strpos($detail, 'authentication failed') !== false) return 'SSH_AUTH_REJECTED';
+        if (strpos($detail, 'could not resolve hostname') !== false) return 'SSH_HOST_UNRESOLVED';
+        if (strpos($detail, 'connection refused') !== false) return 'SSH_CONNECTION_REFUSED';
+        if (strpos($detail, 'address already in use') !== false) return 'SSH_PORT_IN_USE';
+        if (strpos($detail, 'administratively prohibited') !== false) return 'SSH_FORWARD_DENIED';
+        return 'SSH_START_FAILED';
+    }
+
+    private function _tunnel_failure_message(string $code): string
+    {
+        $messages = [
+            'SSH_AUTH_REJECTED' => 'Server 1 menolak SSH key Server 2. Host key yang sudah dipercaya hanya memverifikasi identitas Server 1, bukan memberikan izin masuk. Klik "Buat / Tampilkan Public Key", lalu minta administrator Server 1 memeriksa baris terbatas authorized_keys pada akun SSH yang dipilih. Jangan mengganti key yang sudah ada atau memakai password database. Setelah izin diperbaiki, klik "Mulai Tunnel" lagi.',
+            'SSH_HOST_KEY_REJECTED' => 'Identitas SSH Server 1 belum dipercaya atau berubah. Bandingkan fingerprint melalui kanal tepercaya sebelum menyimpan trust. Jangan menonaktifkan pemeriksaan host key.',
+            'SSH_KEY_UNREADABLE' => 'SSH key lokal tidak dapat digunakan. Periksa pasangan key dan izin file untuk user PHP-FPM Server 2; jangan membuat key pengganti atau melonggarkan izin secara otomatis.',
+            'SSH_TIMEOUT' => 'Koneksi SSH tidak selesai dalam batas waktu. Periksa host SSH, port SSH Server 1, jaringan, dan firewall. Port SSH Server 2 bukan port tujuan tunnel.',
+            'SSH_HOST_UNRESOLVED' => 'Nama host SSH Server 1 tidak dapat ditemukan. Periksa alamat host SSH dan DNS, lalu coba lagi.',
+            'SSH_CONNECTION_REFUSED' => 'Port SSH Server 1 menolak koneksi. Periksa layanan SSH dan port tujuan yang disimpan; jangan membuka port MariaDB ke internet.',
+            'SSH_PORT_IN_USE' => 'Port lokal tunnel sudah dipakai. Klik "Cek Status Tunnel" dan pastikan proses pemilik port sebelum mencoba lagi.',
+            'SSH_FORWARD_DENIED' => 'Server 1 tidak mengizinkan penerusan port ini. Minta administrator memeriksa izin forwarding akun SSH dan tujuan port database.',
+            'SSH_LISTENER_MISSING' => 'SSH belum membuka listener lokal. Klik "Cek Status Tunnel" sebelum mencoba lagi dan minta administrator memeriksa izin forwarding.',
+            'SSH_START_FAILED' => 'SSH tunnel gagal dimulai. Klik "Cek Status Tunnel" dan minta administrator memeriksa log SSH privat Server 2. Jangan menjalankan replikasi sebelum tunnel terverifikasi.',
+        ];
+        return $messages[$code] ?? '';
+    }
+
+    private function _tunnel_error(string $code): void
+    {
+        // This is an operation/configuration rejection, not an HTTP gateway failure.
+        // Returning 502 lets nginx/Cloudflare replace the useful JSON with an HTML error.
+        if ($this->_tunnel_failure_message($code) === '') $code = 'SSH_START_FAILED';
+        while (ob_get_level() > 0) { @ob_end_clean(); }
+        $this->output->set_status_header(422)->set_content_type('application/json')
+            ->set_output(json_encode([
+                'ok' => false, 'code' => $code, 'message' => $this->_tunnel_failure_message($code),
+            ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
     }
 
     private function _tunnel_fingerprint(string $knownHostLine): string

@@ -314,6 +314,7 @@ $lastDump   = !empty($recentDumps) ? $recentDumps[0] : null;
             <textarea id="tunnel-public-key" class="form-control form-control-sm mb-2" rows="2" readonly></textarea>
             <label class="form-label small mb-1" for="tunnel-authorized-key">Baris terbatas untuk authorized_keys Server 1</label>
             <textarea id="tunnel-authorized-key" class="form-control form-control-sm mb-2" rows="3" readonly></textarea>
+            <p class="small text-muted">Ada dua izin yang berbeda: mempercayai <strong>host key</strong> memastikan identitas Server 1; <strong>public key Server 2</strong> harus diizinkan pada akun SSH Server 1 agar tunnel dapat masuk. Password database tidak dipakai untuk login SSH. Menampilkan key kembali tidak mengganti key yang sudah ada.</p>
             <div id="tunnel-fingerprint-list" class="small mb-2" aria-live="polite"></div>
             <div class="input-group input-group-sm mb-2">
               <input type="text" id="tunnel-confirm-fingerprint" class="form-control" placeholder="Tempel fingerprint SHA256 yang sudah diverifikasi dari Server 1">
@@ -1356,7 +1357,7 @@ function toggleChap(header) {
         .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220);
       throw new Error(`Server membalas HTTP ${r.status} (${contentType}), bukan JSON.${summary ? ' Ringkasan: ' + summary : ''}`);
     }
-    if (!j.ok) throw new Error(j.message || 'Gagal');
+    if (!j.ok) throw new Error((j.code ? `[${j.code}] ` : '') + (j.message || 'Gagal'));
     return j;
   }
   async function get(url) {
@@ -1466,7 +1467,8 @@ function toggleChap(header) {
       const j = await post('dbtools/action/tunnel-status', {});
       const state = j.running ? `Tunnel aktif di 127.0.0.1:${j.local_port}.` : `Tunnel belum aktif. Listener: ${j.local_listener ? 'ada' : 'tidak ada'}; SSH control: ${j.control_master ? 'aktif' : 'tidak aktif'}.`;
       const lastStart = j.last_start?.stage ? `\nCheckpoint start terakhir: ${j.last_start.stage} (${j.last_start.at || 'waktu tidak tersedia'}).` : '\nBelum ada checkpoint start dari UI pada server ini.';
-      output('out-tunnel-management', state + lastStart, true);
+      const lastFailure = j.last_start?.message ? `\nHasil percobaan terakhir [${j.last_start.error_code}]: ${j.last_start.message}` : '';
+      output('out-tunnel-management', state + lastStart + lastFailure, true);
     } catch(e) { output('out-tunnel-management', e.message, true); }
     finally { setLoading(this, false); }
   });

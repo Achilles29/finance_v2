@@ -246,6 +246,7 @@
         "application/models/Payroll_preview_model.php",
         "application/models/Pos_availability_queue_model.php",
         "application/models/Pos_customer_review_model.php",
+        "application/models/Pos_mobile_offline_import_model.php",
         "application/models/Pos_model.php",
         "application/models/Pos_order_monitor_model.php",
         "application/models/Pos_print_model.php",

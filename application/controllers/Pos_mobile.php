@@ -25,7 +25,132 @@ class Pos_mobile extends CI_Controller
         $this->json_ok([
             'server_time' => date('c'),
             'service' => 'finance-pos-mobile',
+            'mobile_capabilities' => ['offline_import' => $this->mobile_offline_import_capability()],
         ]);
+    }
+
+    public function offline_import(): void
+    {
+        if (!$this->require_mobile_post() || !$this->authorize_mobile(true)) {
+            return;
+        }
+        if (!is_array($this->mobileUser)) {
+            $this->json_error('Import offline memerlukan token perangkat APK.', 401);
+            return;
+        }
+        $capability = $this->mobile_offline_import_capability();
+        if (empty($capability['posting_ready'])) {
+            $this->json_error('Pemulihan penjualan offline belum diaktifkan di Finance.', 503, [
+                'code' => 'OFFLINE_IMPORT_NOT_READY', 'mobile_capabilities' => $capability,
+            ]);
+            return;
+        }
+        if (
+            !$this->mobile_permission($this->mobile_order_workspace_page_code('create'), 'create')
+            || !$this->mobile_permission($this->mobile_order_workspace_page_code('edit'), 'edit')
+        ) {
+            return;
+        }
+        $request = $this->request_payload();
+        $eventId = trim((string)($request['client_event_id'] ?? ''));
+        $localUuid = trim((string)($request['local_order_uuid'] ?? ''));
+        $ledgerUuid = trim((string)($request['ledger_uuid'] ?? ''));
+        $payloadJson = (string)($request['payload_json'] ?? '');
+        $payloadHash = strtolower(trim((string)($request['payload_hash'] ?? '')));
+        if (
+            (string)($request['protocol_version'] ?? '') !== 'M11.1'
+            || (string)($request['event_type'] ?? '') !== 'OFFLINE_CASH_SALE'
+            || !preg_match('/^EVT-[0-9a-fA-F-]{36}$/', $eventId)
+            || !preg_match('/^ORD-[0-9a-fA-F-]{36}$/', $localUuid)
+            || !preg_match('/^LED-[0-9a-fA-F-]{36}$/', $ledgerUuid)
+            || strlen($payloadJson) > 1048576
+            || $payloadJson === ''
+            || !preg_match('/^[0-9a-f]{64}$/', $payloadHash)
+            || !hash_equals($payloadHash, hash('sha256', $payloadJson))
+        ) {
+            $this->json_error('Bukti transaksi offline tidak valid atau berubah.', 422);
+            return;
+        }
+        $sale = json_decode($payloadJson, true);
+        if (
+            !is_array($sale)
+            || (string)($sale['local_uuid'] ?? '') !== $localUuid
+            || (isset($sale['ledger_uuid']) && (string)$sale['ledger_uuid'] !== $ledgerUuid)
+            || (string)($sale['local_payment_uuid'] ?? '') === ''
+            || (string)($sale['payment_status'] ?? '') !== 'PAID_LOCAL'
+        ) {
+            $this->json_error('Isi bukti penjualan offline tidak sesuai identitas event.', 422);
+            return;
+        }
+        $deviceKey = trim((string)($this->mobileUser['terminal_device_key'] ?? ''));
+        if (
+            $deviceKey === ''
+            || !hash_equals($deviceKey, trim((string)($sale['terminal_device_key'] ?? '')))
+        ) {
+            $this->json_error('Bukti penjualan offline bukan dari perangkat ini.', 403);
+            return;
+        }
+        $binding = [
+            'user_id' => $this->current_actor_user_id(),
+            'employee_id' => $this->current_actor_employee_id(),
+            'outlet_id' => (int)$this->mobileUser['outlet_id'],
+            'terminal_id' => (int)$this->mobileUser['terminal_id'],
+            'device_key' => $deviceKey,
+        ];
+        $sessionContext = $this->mobile_cashier_session_context(false);
+        if (empty($sessionContext['ok'])) {
+            return;
+        }
+        $this->load->model('Pos_mobile_offline_import_model');
+        $result = $this->Pos_mobile_offline_import_model->import_cash_sale(
+            $request, $sale, $binding, $sessionContext['session']
+        );
+        if (empty($result['ok'])) {
+            $this->json_error((string)$result['message'], (int)($result['http_status'] ?? 422));
+            return;
+        }
+        $this->json_ok((array)$result['response'], (int)($result['http_status'] ?? 200));
+    }
+
+    public function offline_import_status(string $clientEventId = ''): void
+    {
+        if (!$this->authorize_mobile(true)) {
+            return;
+        }
+        if (!is_array($this->mobileUser) || !$this->db->table_exists('pos_mobile_offline_sale_import')) {
+            $this->json_error('Status import offline belum tersedia.', 503);
+            return;
+        }
+        if (!preg_match('/^EVT-[0-9a-fA-F-]{36}$/', $clientEventId)) {
+            $this->json_error('Identitas event tidak valid.', 422);
+            return;
+        }
+        $this->load->model('Pos_mobile_offline_import_model');
+        $response = $this->Pos_mobile_offline_import_model->find_bound_event($clientEventId, [
+            'user_id' => $this->current_actor_user_id(),
+            'employee_id' => $this->current_actor_employee_id(),
+            'outlet_id' => (int)$this->mobileUser['outlet_id'],
+            'terminal_id' => (int)$this->mobileUser['terminal_id'],
+            'device_key' => (string)$this->mobileUser['terminal_device_key'],
+        ]);
+        if ($response === null) {
+            $this->json_error('Event import offline tidak ditemukan.', 404);
+            return;
+        }
+        $this->json_ok($response);
+    }
+
+    private function mobile_offline_import_capability(): array
+    {
+        $ready = $this->db->table_exists('pos_mobile_offline_sale_import')
+            && in_array(strtolower(trim((string)getenv('POS_MOBILE_OFFLINE_CASH_IMPORT_ENABLED'))), ['1', 'true', 'yes'], true);
+        return [
+            'protocol_version' => 'M11.1',
+            'intake_enabled' => $ready,
+            'posting_ready' => $ready,
+            'recovery_enabled' => $this->db->table_exists('pos_mobile_offline_sale_import'),
+            'cash_only' => true,
+        ];
     }
 
     public function login(): void
@@ -200,6 +325,7 @@ class Pos_mobile extends CI_Controller
             $this->json_ok([
                 'sync_cursor' => date('c'),
                 'server_time' => date('c'),
+                'mobile_capabilities' => ['offline_import' => $this->mobile_offline_import_capability()],
                 'access_context' => $this->mobile_access_context_payload(),
                 'sensitive_action_contract' => $this->mobile_sensitive_action_contract(),
                 'cashier_bootstrap' => $cashierBootstrap,
@@ -244,6 +370,7 @@ class Pos_mobile extends CI_Controller
         $this->json_ok([
             'sync_cursor' => date('c'),
             'server_time' => date('c'),
+            'mobile_capabilities' => ['offline_import' => $this->mobile_offline_import_capability()],
             'cashier_bootstrap' => $cashierBootstrap,
             'active_sessions' => $this->Pos_model->active_cashier_sessions(),
             'filter_options' => $this->Pos_model->order_draft_filter_options(),

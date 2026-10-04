@@ -426,6 +426,15 @@
       "dependencies": ["2026-10-01f-voucher-campaign-multiple-trigger-products"],
       "classification": "schema",
       "policies": ["clean_install", "upgrade"]
+    },
+    {
+      "id": "2026-10-03b-pos-mobile-offline-cash-import",
+      "order": 2026100302,
+      "path": "sql/2026-10-03b_pos_mobile_offline_cash_import.sql",
+      "sha256": "dfd2035ca779ccf2bc5146050b9263689268569b261fba01dd72c2b0a09aa8f6",
+      "dependencies": ["2026-09-04c-a5-schema-migration-registry-foundation"],
+      "classification": "schema",
+      "policies": ["clean_install", "upgrade"]
     }
   ]
 }

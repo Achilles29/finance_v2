@@ -1,0 +1,31 @@
+-- Durable, one-to-one import receipt for a completed APK cash sale.
+-- Run through the managed migration runner; this file does not change old POS data.
+CREATE TABLE IF NOT EXISTS pos_mobile_offline_sale_import (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  client_event_id VARCHAR(80) NOT NULL,
+  local_order_uuid VARCHAR(80) NOT NULL,
+  ledger_uuid VARCHAR(80) NOT NULL,
+  local_payment_uuid VARCHAR(80) NOT NULL,
+  payload_hash CHAR(64) NOT NULL,
+  actor_user_id BIGINT UNSIGNED NOT NULL,
+  actor_employee_id BIGINT UNSIGNED NOT NULL,
+  outlet_id BIGINT UNSIGNED NOT NULL,
+  terminal_id BIGINT UNSIGNED NOT NULL,
+  cashier_session_id BIGINT UNSIGNED NOT NULL,
+  terminal_device_key_hash CHAR(64) NOT NULL,
+  import_status VARCHAR(24) NOT NULL DEFAULT 'PROCESSING',
+  server_order_id BIGINT UNSIGNED NULL,
+  server_payment_id BIGINT UNSIGNED NULL,
+  error_message TEXT NULL,
+  request_json LONGTEXT NOT NULL,
+  response_json LONGTEXT NULL,
+  received_at DATETIME NOT NULL,
+  processed_at DATETIME NULL,
+  updated_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_pos_mobile_offline_sale_event (client_event_id),
+  UNIQUE KEY uq_pos_mobile_offline_sale_order (local_order_uuid),
+  UNIQUE KEY uq_pos_mobile_offline_sale_ledger (ledger_uuid),
+  UNIQUE KEY uq_pos_mobile_offline_sale_payment (local_payment_uuid),
+  KEY idx_pos_mobile_offline_sale_scope (outlet_id, terminal_id, import_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

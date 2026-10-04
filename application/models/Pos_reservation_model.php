@@ -523,6 +523,7 @@ class Pos_reservation_model extends CI_Model
 
         $previousDbDebug = (bool)$this->db->db_debug;
         $this->db->db_debug = false;
+        $orderNoLockName = '';
         $this->db->trans_begin();
         try {
             $reservation = $this->db->query('SELECT * FROM pos_reservation WHERE id = ? LIMIT 1 FOR UPDATE', [$reservationId])->row_array();
@@ -607,7 +608,8 @@ class Pos_reservation_model extends CI_Model
                     throw new RuntimeException('Nilai reservasi tidak konsisten dengan rincian produk saat verifikasi. Periksa kembali reservasi sebelum diterima ke POS.');
                 }
 
-                $orderNo = $this->generate_order_no($now);
+                $orderNoLockName = $this->Pos_model->acquire_pos_order_no_lock(date('Ymd', strtotime($now)));
+                $orderNo = $this->Pos_model->generate_pos_order_no($now);
                 $orderPayload = [
                     'order_no' => $orderNo,
                     'order_channel' => 'RESERVATION',
@@ -743,7 +745,9 @@ class Pos_reservation_model extends CI_Model
             if ($this->db->trans_status() === false) {
                 throw new RuntimeException('Gagal menyiapkan verifikasi reservasi.');
             }
-            $this->db->trans_commit();
+            if (!$this->db->trans_commit()) {
+                throw new RuntimeException('Gagal menyimpan verifikasi reservasi.');
+            }
             $this->db->db_debug = $previousDbDebug;
 
             $grandTotal = round((float)($reservation['grand_total'] ?? 0), 2);
@@ -760,6 +764,12 @@ class Pos_reservation_model extends CI_Model
             $this->db->trans_rollback();
             $this->db->db_debug = $previousDbDebug;
             return ['ok' => false, 'message' => $e->getMessage()];
+        } finally {
+            if ($orderNoLockName !== '') {
+                $this->db->db_debug = false;
+                $this->Pos_model->release_pos_order_no_lock($orderNoLockName);
+            }
+            $this->db->db_debug = $previousDbDebug;
         }
     }
 
@@ -1406,15 +1416,6 @@ class Pos_reservation_model extends CI_Model
         $prefix = 'RSV-' . $dateKey;
         $row = $this->db->query('SELECT reservation_no FROM pos_reservation WHERE reservation_no LIKE ? ORDER BY reservation_no DESC LIMIT 1 FOR UPDATE', [$prefix . '-%'])->row_array();
         $next = !empty($row['reservation_no']) ? ((int)substr((string)$row['reservation_no'], -4)) + 1 : 1;
-        return sprintf('%s-%04d', $prefix, $next);
-    }
-
-    private function generate_order_no(string $now): string
-    {
-        $dateKey = date('Ymd', strtotime($now));
-        $prefix = 'POS-' . $dateKey;
-        $row = $this->db->query('SELECT order_no FROM pos_order WHERE order_no LIKE ? ORDER BY order_no DESC LIMIT 1 FOR UPDATE', [$prefix . '-%'])->row_array();
-        $next = !empty($row['order_no']) ? ((int)substr((string)$row['order_no'], -4)) + 1 : 1;
         return sprintf('%s-%04d', $prefix, $next);
     }
 

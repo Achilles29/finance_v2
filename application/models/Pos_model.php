@@ -3116,7 +3116,7 @@ class Pos_model extends CI_Model
         }
     }
 
-    public function save_cashier_payment(array $payload, int $actorEmployeeId): array
+    public function save_cashier_payment(array $payload, int $actorEmployeeId, ?string $serverPaidAt = null): array
     {
         require_once APPPATH.'libraries/Feature_policy.php';
         $denied = Feature_policy::runtime()->payload('pos', 'order_payment_save', $payload);
@@ -3140,9 +3140,10 @@ class Pos_model extends CI_Model
             return ['ok' => false, 'message' => 'Order pembayaran tidak valid.'];
         }
 
-        $now = date('Y-m-d H:i:s');
+        $now = $serverPaidAt ?? date('Y-m-d H:i:s');
         $previousDbDebug = (bool)$this->db->db_debug;
         $this->db->db_debug = false;
+        $paymentNoLock = '';
         $this->db->trans_begin();
         try {
             $orderRow = $this->db->query('SELECT * FROM pos_order WHERE id = ? LIMIT 1 FOR UPDATE', [$orderId])->row_array();
@@ -3227,6 +3228,7 @@ class Pos_model extends CI_Model
 
             $reservationSettlement = $this->pending_reservation_settlement_payment($orderId);
             $reservationDepositApplied = round((float)($reservationSettlement['deposit_applied_amount'] ?? 0), 2);
+            $paymentNoLock = $this->acquire_pos_payment_no_lock(date('Ymd', strtotime($now)));
             $paymentNo = $reservationSettlement
                 ? (string)($reservationSettlement['payment_no'] ?? '')
                 : $this->generate_pos_payment_no('FINAL', $now);
@@ -3340,8 +3342,9 @@ class Pos_model extends CI_Model
             if ($this->db->trans_status() === false) {
                 throw new RuntimeException($this->db_error_message('Gagal menyimpan pembayaran POS.'));
             }
-            $this->db->trans_commit();
-            $this->db->db_debug = $previousDbDebug;
+            if (!$this->db->trans_commit()) {
+                throw new RuntimeException('Gagal menyimpan transaksi pembayaran POS.');
+            }
 
             return [
                 'ok' => true,
@@ -3357,8 +3360,12 @@ class Pos_model extends CI_Model
             ];
         } catch (Throwable $e) {
             $this->db->trans_rollback();
-            $this->db->db_debug = $previousDbDebug;
             return ['ok' => false, 'message' => $e->getMessage()];
+        } finally {
+            if ($paymentNoLock !== '') {
+                $this->release_pos_payment_no_lock($paymentNoLock);
+            }
+            $this->db->db_debug = $previousDbDebug;
         }
     }
 
@@ -7388,7 +7395,7 @@ class Pos_model extends CI_Model
         return $result;
     }
 
-    public function save_order_draft(array $payload, int $actorEmployeeId, bool $allowMobileBackup = false): array
+    public function save_order_draft(array $payload, int $actorEmployeeId, bool $allowMobileBackup = false, ?string $serverOrderAt = null): array
     {
         if ($actorEmployeeId <= 0) {
             return ['ok' => false, 'message' => 'User login belum terhubung ke data employee. Order draft POS belum bisa dibuat.'];
@@ -7475,8 +7482,17 @@ class Pos_model extends CI_Model
 
         $previousDbDebug = $this->db->db_debug;
         $this->db->db_debug = false;
-        $this->db->trans_begin();
+        $orderNoLockName = '';
+        $transactionStarted = false;
+        $newOrderAt = $id <= 0 ? ($serverOrderAt ?? date('Y-m-d H:i:s')) : '';
         try {
+            if ($id <= 0) {
+                $orderNoLockName = $this->acquire_pos_order_no_lock(date('Ymd', strtotime($newOrderAt)));
+            }
+            if (!$this->db->trans_begin()) {
+                throw new RuntimeException('Gagal memulai transaksi order POS.');
+            }
+            $transactionStarted = true;
             $existing = null;
             $existingOrder = null;
             $existingPaidTotal = 0.0;
@@ -7539,8 +7555,8 @@ class Pos_model extends CI_Model
                     $this->db->where('order_id', $id)->delete('pos_order_line');
                 }
             } else {
-                $headerPayload['order_no'] = $this->generate_pos_order_no();
-                $headerPayload['ordered_at'] = date('Y-m-d H:i:s');
+                $headerPayload['order_no'] = $this->generate_pos_order_no($newOrderAt);
+                $headerPayload['ordered_at'] = $newOrderAt;
                 $this->db->insert('pos_order', $this->filter_table_payload('pos_order', $headerPayload));
                 $id = (int)$this->db->insert_id();
                 if ($id <= 0) {
@@ -7644,8 +7660,9 @@ class Pos_model extends CI_Model
             if ($this->db->trans_status() === false) {
                 throw new RuntimeException($this->db_error_message('Gagal menyimpan draft order POS.'));
             }
-            $this->db->trans_commit();
-            $this->db->db_debug = $previousDbDebug;
+            if (!$this->db->trans_commit()) {
+                throw new RuntimeException('Gagal menyimpan transaksi order POS.');
+            }
             return [
                 'ok' => true,
                 'id' => $id,
@@ -7656,9 +7673,15 @@ class Pos_model extends CI_Model
                 'appended_line_count' => $isConfirmedAppend ? count($appendedLineIds) : 0,
             ];
         } catch (Throwable $e) {
-            $this->db->trans_rollback();
-            $this->db->db_debug = $previousDbDebug;
+            if ($transactionStarted) {
+                $this->db->trans_rollback();
+            }
             return ['ok' => false, 'message' => $e->getMessage()];
+        } finally {
+            if ($orderNoLockName !== '') {
+                $this->release_pos_order_no_lock($orderNoLockName);
+            }
+            $this->db->db_debug = $previousDbDebug;
         }
     }
 
@@ -13147,21 +13170,64 @@ class Pos_model extends CI_Model
         return trim((string)$memberName);
     }
 
-    private function generate_pos_order_no(?string $orderedAt = null): string
+    public function acquire_pos_order_no_lock(string $dateKey): string
+    {
+        if (!preg_match('/^[0-9]{8}$/', $dateKey)) {
+            throw new InvalidArgumentException('Tanggal nomor order POS tidak valid.');
+        }
+        // Shared by cashier and reservation; keep the lock through commit.
+        $lockName = 'finance:pos_order:' . $dateKey;
+        $query = $this->db->query('SELECT GET_LOCK(?, 10) AS acquired', [$lockName]);
+        $row = $query ? $query->row_array() : [];
+        if ((int)($row['acquired'] ?? 0) !== 1) {
+            throw new RuntimeException('Nomor order POS sedang dipakai kasir lain. Coba simpan lagi.');
+        }
+        return $lockName;
+    }
+
+    public function release_pos_order_no_lock(string $lockName): void
+    {
+        $this->db->query('SELECT RELEASE_LOCK(?)', [$lockName]);
+    }
+
+    public function acquire_pos_payment_no_lock(string $dateKey): string
+    {
+        if (!preg_match('/^[0-9]{8}$/', $dateKey)) {
+            throw new InvalidArgumentException('Tanggal nomor pembayaran POS tidak valid.');
+        }
+        $lockName = 'finance:pos_payment:PAY:' . $dateKey;
+        $query = $this->db->query('SELECT GET_LOCK(?, 10) AS acquired', [$lockName]);
+        $row = $query ? $query->row_array() : [];
+        if ((int)($row['acquired'] ?? 0) !== 1) {
+            throw new RuntimeException('Nomor pembayaran POS sedang dipakai kasir lain. Coba lagi.');
+        }
+        return $lockName;
+    }
+
+    public function release_pos_payment_no_lock(string $lockName): void
+    {
+        $this->db->query('SELECT RELEASE_LOCK(?)', [$lockName]);
+    }
+
+    /** Caller must hold the date-scoped order number lock until commit. */
+    public function generate_pos_order_no(?string $orderedAt = null): string
     {
         $orderedAt = $orderedAt ?: date('Y-m-d H:i:s');
         $dateKey = date('Ymd', strtotime($orderedAt));
         $prefix = 'POS-' . $dateKey;
-        $row = $this->db->query(
-            "SELECT order_no FROM pos_order WHERE order_no LIKE ? ORDER BY order_no DESC LIMIT 1",
-            [$prefix . '-%']
-        )->row_array();
-
-        $next = 1;
-        if (!empty($row['order_no'])) {
-            $parts = explode('-', (string)$row['order_no']);
-            $next = ((int)end($parts)) + 1;
+        $query = $this->db->query(
+            "SELECT CAST(SUBSTRING_INDEX(order_no, '-', -1) AS UNSIGNED) AS last_sequence
+             FROM pos_order
+             WHERE order_no LIKE ? AND order_no REGEXP ?
+             ORDER BY last_sequence DESC LIMIT 1 FOR UPDATE",
+            [$prefix . '-%', '^' . $prefix . '-[0-9]+$']
+        );
+        if (!$query) {
+            throw new RuntimeException('Gagal membaca nomor order POS terbaru.');
         }
+        $row = $query->row_array();
+
+        $next = ((int)($row['last_sequence'] ?? 0)) + 1;
 
         return sprintf('%s-%04d', $prefix, $next);
     }
@@ -13216,16 +13282,17 @@ class Pos_model extends CI_Model
         ];
         $typeCode = $typeCodeMap[$type] ?? 'PAY';
         $prefix = $typeCode . '-' . $dateKey;
-        $row = $this->db->query(
-            "SELECT payment_no FROM pos_payment WHERE payment_no LIKE ? ORDER BY payment_no DESC LIMIT 1",
-            [$prefix . '-%']
-        )->row_array();
-
-        $next = 1;
-        if (!empty($row['payment_no'])) {
-            $parts = explode('-', (string)$row['payment_no']);
-            $next = ((int)end($parts)) + 1;
+        $query = $this->db->query(
+            "SELECT CAST(SUBSTRING_INDEX(payment_no, '-', -1) AS UNSIGNED) AS last_sequence
+             FROM pos_payment WHERE payment_no LIKE ? AND payment_no REGEXP ?
+             ORDER BY last_sequence DESC LIMIT 1 FOR UPDATE",
+            [$prefix . '-%', '^' . $prefix . '-[0-9]+$']
+        );
+        if (!$query) {
+            throw new RuntimeException('Gagal membaca nomor pembayaran POS terbaru.');
         }
+        $row = $query->row_array();
+        $next = ((int)($row['last_sequence'] ?? 0)) + 1;
 
         return sprintf('%s-%04d', $prefix, $next);
     }
